@@ -1,35 +1,23 @@
-use rand::Rng;
 use std::fmt;
-// use std::cmp::Ordering;
+use std::cmp::Ordering;
+use std::iter::zip;
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
 
 #[derive(Debug)]
 pub struct GameConfig {
-    scherbius_starting: u32,
-    scherbius_deal: u32,
-    scherbius_hand_limit: u32,
+    pub scherbius_starting: u32,
+    pub scherbius_deal: u32,
+    pub scherbius_hand_limit: u32,
 
-    turing_starting: u32,
-    turing_deal: u32,
-    turing_hand_limit: u32,
+    pub turing_starting: u32,
+    pub turing_deal: u32,
+    pub turing_hand_limit: u32,
 
-    victory_points: u32,
-    n_battles: u32,
-}
-
-// default game config
-impl GameConfig {
-    pub fn new() -> GameConfig {
-        GameConfig {
-            scherbius_starting: 6,
-            scherbius_deal: 3,
-            scherbius_hand_limit: 4,
-            turing_starting: 4,
-            turing_deal: 2,
-            turing_hand_limit: 4,
-            victory_points: 15,
-            n_battles: 3,
-        }
-    }
+    pub victory_points: u32,
+    pub n_battles: u32,
 }
 
 #[derive(Debug)]
@@ -47,7 +35,7 @@ pub struct GameState {
 impl GameState {
     pub fn new(game_config: &GameConfig) -> GameState {
         GameState{
-            // deal inital hands
+            // deal inital random hands
             scherbius_hand: draw_cards(game_config.scherbius_starting),
             turing_hand: draw_cards(game_config.turing_starting),
         
@@ -69,9 +57,9 @@ impl GameState{
     pub fn step(
         &mut self,
         game_config: &GameConfig, 
-        turing_action: &Action,
-        scherbius_action: &Action,
-        rewards: &Rewards) {
+        turing_actions: &Vec<Action>,
+        scherbius_actions: &Vec<Action>,
+        rewards: &Vec<Reward>) {
 
     // each player gets some new cards
     let new_cards = draw_cards(game_config.scherbius_deal);
@@ -80,68 +68,92 @@ impl GameState{
     let new_cards = draw_cards(game_config.turing_deal);
     self.turing_hand.extend_from_slice(&new_cards);
 
-    // let results = resolve_battles(game_state, scherbius_action, turing_action);
-    
-    // distribute the rewards
-    for i in 0..game_config.n_battles {
-        let (reward_type, value) = rewards.i;
-        let winner = results[i];
+    // resolve battles
+    let results: Vec<_> = zip(scherbius_actions.iter(), turing_actions.iter())
+        .map(|(a1, a2)|battle_result(a1, a2))
+        .filter(|x| x.is_some())
+        .map(|x| x.unwrap())
+        .collect();
 
-        if winner == 0 {
-            if reward_type == 0 {
-                let new_cards = draw_cards(value);
-                self.scherbius_hand.extend_from_slice(&new_cards);
-                }
-            else {
-                self.scherbius_points = self.scherbius_points + value;
-            }
+    // distribute the rewards
+    for (result, reward) in zip(results, rewards) {
+        match result {
+            Actor::Turing => 
+                {match reward {
+                    Reward::VictoryPoints(v) => self.turing_points = self.turing_points + v,
+                    Reward::NewCards(cards) => self.turing_hand.extend_from_slice(&cards)
+                    }},
+            Actor::Scherbius => 
+                {match reward {
+                    Reward::VictoryPoints(v) => self.scherbius_points = self.scherbius_points + v,
+                    Reward::NewCards(cards) => self.scherbius_hand.extend_from_slice(&cards)
+                }}
+            _ => ()
         }
-        else {
-            if reward_type == 0 {
-                let new_cards = draw_cards(value);
-                self.turing_hand.extend_from_slice(&new_cards);
-                }
-            else {
-                self.turing_points = self.turing_points + value;
-            }
-        }
+
     }
 
+    }
+}
+
+pub type Player = fn(&GameState, &Vec<Reward>) -> Vec<Action>;
+
+#[derive(Debug)]
+enum Actor {
+    Scherbius,
+    Turing,
+    // Scherbius(Player),
+    // Turing(Player),
+}
+
+
+fn battle_result(
+    sherbius_action: &Action, 
+    scherbius_action: &Action) -> Option<Actor> {
+    match sherbius_action.card1.cmp(&scherbius_action.card1) {
+        Ordering::Less => Some(Actor::Turing),
+        Ordering::Greater => Some(Actor::Scherbius),
+        Ordering::Equal => None,
     }
 }
 
 #[derive(Debug)]
-pub struct Rewards {
-    pub battle1: (bool, u32),
-    pub battle2: (bool, u32),
-    pub battle3: (bool, u32),
+pub enum Reward {
+    VictoryPoints(u32),
+    NewCards(Vec<u32>),
 }
 
-impl fmt::Display for Rewards {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "B1: {:?}\nB2: {:?}\nB3: {:?}", self.battle1, self.battle2, self.battle3)
+impl Distribution<Reward> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Reward {
+        match rng.gen_range(0..2) {
+            0 => Reward::VictoryPoints(rng.gen_range(0..4)),
+            1 => Reward::NewCards(draw_cards(rng.gen_range(0..4))),
+            _ => Reward::VictoryPoints(100)
+        }
     }
 }
+
+// impl fmt::Display for Rewards {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "B1: {:?}\nB2: {:?}\nB3: {:?}", self.battle1, self.battle2, self.battle3)
+//     }
+// }
 
 #[derive(Debug)]
 pub struct Action {
-    pub chosen_cards: u32,
+    pub card1: u32,
+    // pub card2: u32,
 }
 
-fn random_rewards(n: u32)->Rewards {
+fn random_rewards(n: u32)->Vec<Reward> {
     let mut rewards = Vec::new();
-    let mut rng = rand::thread_rng();
 
-    for i in 0..n {
-        let reward_type = rng.gen::<bool>();
-        let reward_value: u32 = rng.gen_range(0..4);
-        rewards.push((reward_type, reward_value))
+    for _ in 0..n {
+        let reward: Reward = rand::random();
+
+        rewards.push(reward)
     }
-    Rewards {
-        battle1: rewards[0],
-        battle2: rewards[1],
-        battle3: rewards[2],
-    }
+    rewards
 }
 
 fn draw_cards(n: u32)->Vec<u32> {
@@ -155,31 +167,21 @@ fn draw_cards(n: u32)->Vec<u32> {
     cards
 }
 
-pub type Player = fn(&GameState) -> Action;
-
 pub fn play(
         game_config: GameConfig,
         mut game_state: GameState, 
         sherbius: Player, 
         turing: Player) {
 
-    let mut counter: u32 = 0;
-
     loop {
         // what is being played for this round?
         let rewards = random_rewards(game_config.n_battles);
-        println!("{}", rewards);
-        println!("{:?}", game_state);
-
-        counter = counter + 1;
-        println!("Counter: {}", counter);
 
         // Sherbius plays first
-        let scherbius_action = sherbius(&game_state);
-        println!("{:?}", scherbius_action);
+        let scherbius_action = sherbius(&game_state, &rewards);
 
         // Turing plays second
-        let turing_action = turing(&game_state);
+        let turing_action = turing(&game_state, &rewards);
         // gamestate = gamestate.update(&action);
 
         // check_action_validity(turing_action);
@@ -201,11 +203,3 @@ pub fn play(
         }
     }
 }
-
-// fn battle_result() {
-//     match turing_value.cmp(&scherbius_value) {
-//         Ordering::Less => 1,
-//         Ordering::Greater => 0,
-//         Ordering::Equal => -1,
-//     };
-// }
