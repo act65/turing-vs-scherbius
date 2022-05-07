@@ -65,12 +65,30 @@ impl GameState{
         turing_actions: &TuringAction,
         rewards: &Vec<Reward>) {
 
+    // println!("Hand {:?}", self.scherbius_hand);
+    // println!("Action {:?}", scherbius_actions);
+
     // each player gets some new cards
     let new_cards = draw_cards(game_config.scherbius_deal);
     self.scherbius_hand.extend_from_slice(&new_cards);
 
     let new_cards = draw_cards(game_config.turing_deal);
     self.turing_hand.extend_from_slice(&new_cards);
+
+    // remove cards played from hands
+    // TODO move into fn
+    for c in scherbius_actions.strategy.iter() {
+        for i in c.iter() {
+            let index = self.scherbius_hand.iter().position(|y| *y == *i).unwrap();
+            self.scherbius_hand.remove(index);    
+        }
+    }
+    for c in turing_actions.strategy.iter() {
+        for i in c.iter() {
+            let index = self.turing_hand.iter().position(|y| *y == *i).unwrap();
+            self.turing_hand.remove(index);    
+        }
+    }
 
     // resolve battles
     let results: Vec<_> = zip(scherbius_actions.strategy.iter(), turing_actions.strategy.iter())
@@ -86,6 +104,8 @@ impl GameState{
 
     // println!("{:?}", turing_actions);
     // println!("{:?}", scherbius_actions);
+    // println!("{:?}", self.scherbius_hand);
+    // println!("{:?}", rewards);
     // println!("{:?}", results);
 
     // distribute the rewards
@@ -112,21 +132,10 @@ impl GameState{
     // TODO
 
     }
-    pub fn update(
-        &mut self,
-        hand: Cards,
-        player: Actor
-    ) {
-        match player {
-            Actor::Scherbius => self.scherbius_hand = hand,
-            Actor::Turing => self.turing_hand = hand,
-        }
-        
-    }
 }
 
-pub type ScherbiusPlayer = fn(&mut GameState, &Vec<Reward>) -> ScherbiusAction;
-pub type TuringPlayer = fn(&mut GameState, &Vec<Reward>, &Vec<Cards>) -> TuringAction;
+pub type ScherbiusPlayer = fn(&Vec<u32>, &Vec<Reward>) -> ScherbiusAction;
+pub type TuringPlayer = fn(&Vec<u32>, &Vec<Reward>, &Vec<Cards>) -> TuringAction;
 
 // #[derive(Debug)]
 // pub struct Cards {
@@ -138,6 +147,7 @@ pub type Cards = Vec<u32>;
 pub enum Actor {
     Scherbius,
     Turing,
+    Null
     // Scherbius(Player),
     // Turing(Player),
 }
@@ -164,8 +174,10 @@ impl Distribution<Reward> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Reward {
         match rng.gen_range(0..2) {
             // TODO distribution should make larger values less likely
-            0 => Reward::VictoryPoints(rng.gen_range(1..10)),
-            1 => Reward::NewCards(draw_cards(rng.gen_range(1..10))),
+            // TODO want a parameter to control the max value in GameConfig?!
+            // TODO move rng to be an arg?
+            0 => Reward::VictoryPoints(rng.gen_range(1..5)),
+            1 => Reward::NewCards(draw_cards(rng.gen_range(1..5))),
             _ => Reward::Null,
         }
     }
@@ -212,20 +224,22 @@ pub fn play(
         game_config: GameConfig,
         mut game_state: GameState, 
         sherbius: ScherbiusPlayer, 
-        turing: TuringPlayer) {
+        turing: TuringPlayer) -> Actor{
+
+    let mut winner: Actor = Actor::Null;
 
     loop {
         // what is being played for this round?
         let rewards = random_rewards(game_config.n_battles);
 
         // Sherbius plays first
-        let scherbius_action = sherbius(&mut game_state, &rewards);
+        let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);
         // let encrypted_strategy = encrypt(&scherbius_action.strategy);
-        let encrypted_strategy = scherbius_action.strategy.clone();
+        let intercepted_scherbius_strategy = if game_state.encryption_broken {scherbius_action.strategy.clone()}
+            else {scherbius_action.strategy.clone()};
 
         // Turing plays second
-        let turing_action = turing(&mut game_state, &rewards, &encrypted_strategy);
-        // gamestate = gamestate.update(&action);
+        let turing_action = turing(&game_state.turing_hand, &rewards, &intercepted_scherbius_strategy);
 
         // check_action_validity(turing_action);
         // check_action_validity(sherbius_action);
@@ -238,13 +252,14 @@ pub fn play(
 
         // check if a player has won
         if game_state.scherbius_points >= game_config.victory_points {
-            println!("Scherbius wins");
+            winner = Actor::Scherbius;
             break;}
         else if game_state.turing_points >= game_config.victory_points {
-            println!("Turing wins");
+            winner = Actor::Turing;
             break;
         }
     }
+    winner
 }
 
 // #[cfg(test)]

@@ -12,14 +12,14 @@ fn main() {
         turing_starting: 4,
         turing_deal: 2,
 
-        victory_points: 15,
+        victory_points: 50,
         n_battles: 8,
 
         encryption_cost: 5,
     };
     let mut game_state = GameState::new(&game_config);
 
-    play(
+    let winner = play(
         game_config,
         game_state, 
         players::random_scherbius_player, 
@@ -27,4 +27,5 @@ fn main() {
         // players::user_input_player, 
         players::random_turing_player
     );
+    println!("Winner: {:?}", winner);
 }

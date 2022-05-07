@@ -48,7 +48,8 @@ fn draw(deck: &mut Cards, n: usize)->Cards {
             Some(x) => {
                 drawn.push(*x);
                 let index = deck.iter().position(|y| *y == *x).unwrap();
-                deck.remove(index);}
+                deck.remove(index);
+                }
             None => ()
         }
         }
@@ -69,13 +70,12 @@ fn get_rnd_strategy(hand: &mut Cards, n: usize)->Vec<Cards>{
 }
 
 pub fn random_scherbius_player(
-        gamestate: &mut GameState, 
+        scherbius_hand: &Vec<u32>, 
         rewards: &Vec<Reward>)
         ->ScherbiusAction{
 
-    let mut hand = gamestate.scherbius_hand.clone();
+    let mut hand = scherbius_hand.clone();
     let strategy = get_rnd_strategy(&mut hand, rewards.len());
-    gamestate.update(hand, Actor::Scherbius);
 
     ScherbiusAction {
         strategy: strategy,
@@ -84,14 +84,13 @@ pub fn random_scherbius_player(
 }
 
 pub fn random_turing_player(
-    gamestate: &mut GameState, 
+    turing_hand: &Vec<u32>, 
     rewards: &Vec<Reward>,
     encrypted_cards: &Vec<Cards>)
     ->TuringAction{
 
-    let mut hand = gamestate.turing_hand.clone();
+    let mut hand = turing_hand.clone();
     let strategy = get_rnd_strategy(&mut hand, rewards.len());
-    gamestate.update(hand, Actor::Turing);
 
     TuringAction {
         strategy: strategy,
