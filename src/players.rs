@@ -39,13 +39,16 @@ use turing_vs_scherbius::{GameState, ScherbiusAction, TuringAction, Reward, Acto
 
 
 fn draw(deck: &mut Cards, n: usize)->Cards {
-    let drawn: Vec<u32> = Vec::new();
-    for i in 0..n {
-        let x = deck.choose(&mut rand::thread_rng());
+    let mut drawn: Vec<u32> = Vec::new();
+    // TODO shouldnt create new thread_rng. should pass in as mut arg
+    let mut rng = thread_rng();
+    for _ in 0..n {
+        let x = deck.choose(&mut rng);
         match x {
             Some(x) => {
                 drawn.push(*x);
-                deck.remove(*x as usize);}
+                let index = deck.iter().position(|y| *y == *x).unwrap();
+                deck.remove(index);}
             None => ()
         }
         }
@@ -54,20 +57,25 @@ fn draw(deck: &mut Cards, n: usize)->Cards {
 
 fn get_rnd_strategy(hand: &mut Cards, n: usize)->Vec<Cards>{
     let mut strategy: Vec<Cards> = Vec::new();
+    let mut rng = thread_rng();
 
-    for i in 0..n {
-        let choice = draw(hand, 1);
+    for _ in 0..n {
+        // pick a random num of cards
+        let k: u32 = rng.gen_range(0..2);
+        let choice = draw(hand, k as usize);
         strategy.push(choice);
     }
     strategy
 }
 
 pub fn random_scherbius_player(
-        observation: &mut GameState, 
+        gamestate: &mut GameState, 
         rewards: &Vec<Reward>)
         ->ScherbiusAction{
 
-    let strategy = get_rnd_strategy(&observation.scherbius_hand, rewards.len());
+    let mut hand = gamestate.scherbius_hand.clone();
+    let strategy = get_rnd_strategy(&mut hand, rewards.len());
+    gamestate.update(hand, Actor::Scherbius);
 
     ScherbiusAction {
         strategy: strategy,
@@ -76,12 +84,14 @@ pub fn random_scherbius_player(
 }
 
 pub fn random_turing_player(
-    observation: &mut GameState, 
+    gamestate: &mut GameState, 
     rewards: &Vec<Reward>,
     encrypted_cards: &Vec<Cards>)
     ->TuringAction{
 
-    let strategy = get_rnd_strategy(&observation.turing_hand, rewards.len());
+    let mut hand = gamestate.turing_hand.clone();
+    let strategy = get_rnd_strategy(&mut hand, rewards.len());
+    gamestate.update(hand, Actor::Turing);
 
     TuringAction {
         strategy: strategy,

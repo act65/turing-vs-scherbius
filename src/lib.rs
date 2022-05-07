@@ -80,6 +80,14 @@ impl GameState{
         .map(|x| x.unwrap())
         .collect();
 
+    // TODO test that;
+    // - draw means no one wins
+    // - no cards vs cards means cards wins
+
+    // println!("{:?}", turing_actions);
+    // println!("{:?}", scherbius_actions);
+    // println!("{:?}", results);
+
     // distribute the rewards
     for (result, reward) in zip(results, rewards) {
         match result {
@@ -104,10 +112,21 @@ impl GameState{
     // TODO
 
     }
+    pub fn update(
+        &mut self,
+        hand: Cards,
+        player: Actor
+    ) {
+        match player {
+            Actor::Scherbius => self.scherbius_hand = hand,
+            Actor::Turing => self.turing_hand = hand,
+        }
+        
+    }
 }
 
-pub type ScherbiusPlayer = fn(&GameState, &Vec<Reward>) -> ScherbiusAction;
-pub type TuringPlayer = fn(&GameState, &Vec<Reward>, &Vec<Cards>) -> TuringAction;
+pub type ScherbiusPlayer = fn(&mut GameState, &Vec<Reward>) -> ScherbiusAction;
+pub type TuringPlayer = fn(&mut GameState, &Vec<Reward>, &Vec<Cards>) -> TuringAction;
 
 // #[derive(Debug)]
 // pub struct Cards {
@@ -127,7 +146,7 @@ pub enum Actor {
 fn battle_result(
     scherbius_cards: &Cards, 
     turing_cards: &Cards) -> Option<Actor> {
-    match (scherbius_cards.iter().sum::<u32>()).cmp(&turing_cards.iter().sum()) {
+    match (scherbius_cards.iter().sum::<u32>()).cmp(&turing_cards.iter().sum::<u32>()) {
         Ordering::Less => Some(Actor::Turing),
         Ordering::Greater => Some(Actor::Scherbius),
         Ordering::Equal => None,
@@ -178,7 +197,7 @@ fn draw_cards(n: u32)->Cards {
     let mut cards = Vec::new();
     let mut rng = rand::thread_rng();
 
-    for i in 0..n {
+    for _ in 0..n {
         let value: u32 = rng.gen_range(1..11);
         cards.push(value)
     }
@@ -200,12 +219,12 @@ pub fn play(
         let rewards = random_rewards(game_config.n_battles);
 
         // Sherbius plays first
-        let scherbius_action = sherbius(&game_state, &rewards);
+        let scherbius_action = sherbius(&mut game_state, &rewards);
         // let encrypted_strategy = encrypt(&scherbius_action.strategy);
         let encrypted_strategy = scherbius_action.strategy.clone();
 
         // Turing plays second
-        let turing_action = turing(&game_state, &rewards, &encrypted_strategy);
+        let turing_action = turing(&mut game_state, &rewards, &encrypted_strategy);
         // gamestate = gamestate.update(&action);
 
         // check_action_validity(turing_action);
