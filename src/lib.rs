@@ -62,11 +62,11 @@ impl GameState{
         turing_actions: &TuringAction,
         rewards: &Vec<Reward>) {
 
-    println!("{:?}", self.scherbius_hand);
-    println!("{:?}", scherbius_actions);
+    // println!("{:?}", self.scherbius_hand);
+    // println!("{:?}", scherbius_actions);
 
-    println!("{:?}", self.turing_hand);
-    println!("{:?}", turing_actions);
+    // println!("{:?}", self.turing_hand);
+    // println!("{:?}", turing_actions);
 
 
     // each player gets some new cards
@@ -110,8 +110,8 @@ impl GameState{
     // - draw means no one wins
     // - no cards vs cards means cards wins
 
-    println!("{:?}", rewards);
-    println!("{:?}", results);
+    // println!("{:?}", rewards);
+    // println!("{:?}", results);
 
     // distribute the rewards
     for (result, reward) in zip(results, rewards) {
@@ -139,8 +139,9 @@ impl GameState{
     }
 
     // reset encryption?
+    let mut rng = rand::thread_rng();
     if self.scherbius_points >= game_config.encryption_cost && scherbius_actions.encryption 
-        {self.encryption = [0, 1];  // TODO randomly pick new encryption 
+        {self.encryption = [rng.gen_range(1..10), rng.gen_range(1..10)]; 
         self.encryption_broken=false};
     }
 
@@ -248,7 +249,7 @@ pub fn play(
         let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);
         // let encrypted_strategy = encrypt(&scherbius_action.strategy);
         let intercepted_scherbius_strategy = if game_state.encryption_broken {scherbius_action.strategy.clone()}
-            else {scherbius_action.strategy.clone()};
+            else {[[].to_vec()].to_vec()};
 
         // Turing plays second
         let turing_action = turing(&game_state.turing_hand, &rewards, &intercepted_scherbius_strategy);
