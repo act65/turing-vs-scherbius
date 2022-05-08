@@ -150,10 +150,6 @@ impl GameState{
 pub type ScherbiusPlayer = fn(&Vec<u32>, &Vec<Reward>) -> ScherbiusAction;
 pub type TuringPlayer = fn(&Vec<u32>, &Vec<Reward>, &Vec<Cards>) -> TuringAction;
 
-// #[derive(Debug)]
-// pub struct Cards {
-//     value: Vec<u32>
-// }
 pub type Cards = Vec<u32>;
 
 #[derive(Debug)]
@@ -161,8 +157,6 @@ pub enum Actor {
     Scherbius,
     Turing,
     Null
-    // Scherbius(Player),
-    // Turing(Player),
 }
 
 
@@ -228,10 +222,6 @@ fn draw_cards(n: u32)->Cards {
     }
     cards
 }
-
-// fn encrypt(cards: Vec<u32>)->Vec<u32> {
-    
-// }
 
 pub fn play(
         game_config: GameConfig,
