@@ -5,6 +5,7 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+use rand::rngs::ThreadRng;
 
 #[derive(Debug)]
 pub struct GameConfig {
@@ -28,6 +29,7 @@ struct GameState {
     encryption: [u32; 2],
     // TODO want to vary the number of values used for encryption?!
     // 11^2 = 121. quite hard to break encryption!
+    rng: ThreadRng,
 
     turing_points: u32,
     scherbius_points: u32,
@@ -44,11 +46,13 @@ impl GameState{
         let mut rng = rand::thread_rng(); 
         GameState{
             // deal inital random hands
-            scherbius_hand: draw_cards(game_config.scherbius_starting),
-            turing_hand: draw_cards(game_config.turing_starting),
+            scherbius_hand: draw_cards(game_config.scherbius_starting, &rng),
+            turing_hand: draw_cards(game_config.turing_starting, &rng),
         
             encryption_broken: false,
             encryption: [rng.gen_range(1..10), rng.gen_range(1..10)],
+
+            rng: rng,
 
             turing_points: 0,
             scherbius_points: 0,
@@ -70,10 +74,10 @@ impl GameState{
 
 
     // each player gets some new cards
-    let new_cards = draw_cards(game_config.scherbius_deal);
+    let new_cards = draw_cards(game_config.scherbius_deal, &self.rng);
     self.scherbius_hand.extend_from_slice(&new_cards);
 
-    let new_cards = draw_cards(game_config.turing_deal);
+    let new_cards = draw_cards(game_config.turing_deal, &self.rng);
     self.turing_hand.extend_from_slice(&new_cards);
 
     // remove cards played from hands
@@ -184,12 +188,13 @@ pub enum Reward {
 
 impl Distribution<Reward> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Reward {
+        let mut rng = rand::thread_rng(); 
         match rng.gen_range(0..2) {
             // TODO distribution should make larger values less likely
             // TODO want a parameter to control the max value in GameConfig?!
             // TODO move rng to be an arg?
             0 => Reward::VictoryPoints(rng.gen_range(1..5)),
-            1 => Reward::NewCards(draw_cards(rng.gen_range(1..5))),
+            1 => Reward::NewCards(draw_cards(rng.gen_range(1..5), &rng)),
             _ => Reward::Null,
         }
     }
@@ -217,9 +222,8 @@ pub struct ScherbiusAction {
     pub encryption: bool,
 }
 
-fn draw_cards(n: u32)->Cards {
+fn draw_cards(n: u32, rng: &ThreadRng)->Cards {
     let mut cards = Vec::new();
-    let mut rng = rand::thread_rng();
 
     for _ in 0..n {
         let value: u32 = rng.gen_range(1..11);
