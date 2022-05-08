@@ -1,8 +1,9 @@
 use std::io;
 use rand::{thread_rng, Rng};
+use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 
-use turing_vs_scherbius::{GameState, ScherbiusAction, TuringAction, Reward, Actor, Cards};
+use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Actor, Cards};
 
 
 // fn get_user_input()->u32 {
@@ -69,6 +70,23 @@ fn get_rnd_strategy(hand: &mut Cards, n: usize)->Vec<Cards>{
     strategy
 }
 
+pub fn random_reencryption()->bool {
+    match thread_rng().gen_range(0..5) {
+        0 => true,
+        _ => false,
+    }
+}
+
+fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<[u32; 2]>{
+    let mut guesses: Vec<[u32; 2]> = Vec::new();
+
+    for _ in 0..n {
+        let choice = draw(hand, 2);
+        guesses.push([choice[0], choice[1]]);
+    }
+    guesses
+}
+
 pub fn random_scherbius_player(
         scherbius_hand: &Vec<u32>, 
         rewards: &Vec<Reward>)
@@ -76,10 +94,11 @@ pub fn random_scherbius_player(
 
     let mut hand = scherbius_hand.clone();
     let strategy = get_rnd_strategy(&mut hand, rewards.len());
+    let encrypt = random_reencryption();
 
     ScherbiusAction {
         strategy: strategy,
-        encryption: None,
+        encryption: encrypt,
     }
 }
 
@@ -90,10 +109,11 @@ pub fn random_turing_player(
     ->TuringAction{
 
     let mut hand = turing_hand.clone();
+    let guesses = get_rnd_guesses(&mut hand, 1);
     let strategy = get_rnd_strategy(&mut hand, rewards.len());
 
     TuringAction {
         strategy: strategy,
-        guesses: None,
+        guesses: guesses,
     }
 }

@@ -16,39 +16,21 @@ pub struct GameConfig {
     pub n_battles: u32,
 
     pub encryption_cost: u32,
-    // re-encrypting costs victory points?!
-
+    // re-encrypting costs victory points
 }
 
 #[derive(Debug)]
-pub struct GameState {
-    pub turing_hand: Vec<u32>,
-    pub scherbius_hand: Vec<u32>,
+struct GameState {
+    turing_hand: Vec<u32>,
+    scherbius_hand: Vec<u32>,
 
-    pub encryption_broken: bool,
-    pub encryption: (u32, u32),
-    // could vary the number of values used for encryption?!
+    encryption_broken: bool,
+    encryption: [u32; 2],
+    // TODO want to vary the number of values used for encryption?!
+    // 11^2 = 121. quite hard to break encryption!
 
-    pub turing_points: u32,
-    pub scherbius_points: u32,
-}
-
-// initial game state
-impl GameState {
-    pub fn new(game_config: &GameConfig) -> GameState {
-        let mut rng = rand::thread_rng(); 
-        GameState{
-            // deal inital random hands
-            scherbius_hand: draw_cards(game_config.scherbius_starting),
-            turing_hand: draw_cards(game_config.turing_starting),
-        
-            encryption_broken: false,
-            encryption: (rng.gen_range(1..10), rng.gen_range(1..10)),
-
-            turing_points: 0,
-            scherbius_points: 0,
-        }
-    }
+    turing_points: u32,
+    scherbius_points: u32,
 }
 
 impl fmt::Display for GameState {
@@ -58,15 +40,34 @@ impl fmt::Display for GameState {
 }
 
 impl GameState{
-    pub fn step(
+    fn new(game_config: &GameConfig) -> GameState {
+        let mut rng = rand::thread_rng(); 
+        GameState{
+            // deal inital random hands
+            scherbius_hand: draw_cards(game_config.scherbius_starting),
+            turing_hand: draw_cards(game_config.turing_starting),
+        
+            encryption_broken: false,
+            encryption: [rng.gen_range(1..10), rng.gen_range(1..10)],
+
+            turing_points: 0,
+            scherbius_points: 0,
+        }
+    }
+
+    fn step(
         &mut self,
         game_config: &GameConfig, 
         scherbius_actions: &ScherbiusAction,
         turing_actions: &TuringAction,
         rewards: &Vec<Reward>) {
 
-    // println!("Hand {:?}", self.scherbius_hand);
-    // println!("Action {:?}", scherbius_actions);
+    println!("{:?}", self.scherbius_hand);
+    println!("{:?}", scherbius_actions);
+
+    println!("{:?}", self.turing_hand);
+    println!("{:?}", turing_actions);
+
 
     // each player gets some new cards
     let new_cards = draw_cards(game_config.scherbius_deal);
@@ -89,6 +90,13 @@ impl GameState{
             self.turing_hand.remove(index);    
         }
     }
+    // remove guesses from turing's hand
+    for g in turing_actions.guesses.iter() {
+        for i in g.iter() {
+            let index = self.turing_hand.iter().position(|y| *y == *i).unwrap();
+            self.turing_hand.remove(index);        
+        }
+    }
 
     // resolve battles
     let results: Vec<_> = zip(scherbius_actions.strategy.iter(), turing_actions.strategy.iter())
@@ -102,11 +110,8 @@ impl GameState{
     // - draw means no one wins
     // - no cards vs cards means cards wins
 
-    // println!("{:?}", turing_actions);
-    // println!("{:?}", scherbius_actions);
-    // println!("{:?}", self.scherbius_hand);
-    // println!("{:?}", rewards);
-    // println!("{:?}", results);
+    println!("{:?}", rewards);
+    println!("{:?}", results);
 
     // distribute the rewards
     for (result, reward) in zip(results, rewards) {
@@ -128,10 +133,17 @@ impl GameState{
 
     }
 
-    // update encryption
-    // TODO
-
+    // resolve encryption guess
+    for g in turing_actions.guesses.iter() {
+        if g == &self.encryption {self.encryption_broken=true}
     }
+
+    // reset encryption?
+    if self.scherbius_points >= game_config.encryption_cost && scherbius_actions.encryption 
+        {self.encryption = [0, 1];  // TODO randomly pick new encryption 
+        self.encryption_broken=false};
+    }
+
 }
 
 pub type ScherbiusPlayer = fn(&Vec<u32>, &Vec<Reward>) -> ScherbiusAction;
@@ -196,13 +208,13 @@ fn random_rewards(n: u32)->Vec<Reward> {
 #[derive(Debug)]
 pub struct TuringAction {
     pub strategy: Vec<Cards>,
-    pub guesses: Option<Vec<(u32, u32)>>,
+    pub guesses: Vec<[u32; 2]>,
 }
 
 #[derive(Debug)]
 pub struct ScherbiusAction {
     pub strategy: Vec<Cards>,
-    pub encryption: Option<(u32, u32)>,
+    pub encryption: bool,
 }
 
 fn draw_cards(n: u32)->Cards {
@@ -222,11 +234,11 @@ fn draw_cards(n: u32)->Cards {
 
 pub fn play(
         game_config: GameConfig,
-        mut game_state: GameState, 
         sherbius: ScherbiusPlayer, 
         turing: TuringPlayer) -> Actor{
 
-    let mut winner: Actor = Actor::Null;
+        let mut game_state = GameState::new(&game_config);
+        let mut winner: Actor = Actor::Null;
 
     loop {
         // what is being played for this round?
