@@ -3,18 +3,20 @@ use rand::{thread_rng, Rng};
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 
-use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Actor, Cards};
+use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Actor, Cards, EncryptionCode};
 
 
-// fn get_user_input()->u32 {
-//     let mut choice: String = String::new();
-//     io::stdin()
-//         .read_line(&mut choice)
-//         .expect("Failed to read line");
+fn get_user_input()->u32 {
+    let mut choice: String = String::new();
+    io::stdin()
+        .read_line(&mut choice)
+        .expect("Failed to read line");
 
-//     let choice: u32 = choice.trim().parse().expect("Please type a number!");
-//     choice
-// }
+    let choice: u32 = choice.trim().parse().expect("Please type a number!");
+    // need to add graceful error handling...
+    // while None ...
+    choice
+}
 
 // pub fn user_input_player(
 //         observation: &GameState, 
@@ -37,6 +39,33 @@ use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Actor, Cards};
 
 //     actions
 // }
+
+pub fn turing_user_player(
+    turing_hand: &Vec<u32>, 
+    rewards: &Vec<Reward>,
+    encrypted_cards: &Vec<Cards>)
+    ->TuringAction{
+
+    println!("Rewards");
+    println!("{:?}", turing_hand);
+    println!("Hand");
+    println!("{:?}", rewards);
+
+    let x = get_user_input();
+    let y = get_user_input();
+    
+    let mut hand = turing_hand.clone();
+    let guesses = get_rnd_guesses(&mut hand, 1);
+    let strategy = get_rnd_strategy(&mut hand, rewards.len());
+    
+    println!("{:?}", strategy);
+
+
+    TuringAction {
+        strategy: strategy,
+        guesses: guesses,
+    }
+}
 
 
 fn draw(deck: &mut Cards, n: usize)->Cards {
@@ -77,12 +106,12 @@ pub fn random_reencryption()->bool {
     }
 }
 
-fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<[u32; 2]>{
-    let mut guesses: Vec<[u32; 2]> = Vec::new();
+fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<EncryptionCode>{
+    let mut guesses: Vec<EncryptionCode> = Vec::new();
 
     for _ in 0..n {
         let choice = draw(hand, 2);
-        guesses.push([choice[0], choice[1]]);
+        guesses.push(vec![choice[0], choice[1]]);
     }
     guesses
 }
