@@ -41,6 +41,33 @@ pub fn user_input_player(
     }
     // need a callback to print results?
 }
+pub fn turing_user_player(
+    turing_hand: &Vec<u32>, 
+    rewards: &Vec<Reward>,
+    encrypted_cards: &Vec<Cards>)
+    ->TuringAction{
+
+    println!("Rewards");
+    println!("{:?}", turing_hand);
+    println!("Hand");
+    println!("{:?}", rewards);
+
+    let x = get_user_input();
+    let y = get_user_input();
+    
+    let mut hand = turing_hand.clone();
+    let guesses = get_rnd_guesses(&mut hand, 1);
+    let strategy = get_rnd_strategy(&mut hand, rewards.len());
+    
+    println!("{:?}", strategy);
+
+
+    TuringAction {
+        strategy: strategy,
+        guesses: guesses,
+    }
+}
+
 
 fn draw(deck: &mut Cards, n: usize)->Cards {
     let mut drawn: Vec<u32> = Vec::new();
@@ -80,12 +107,12 @@ pub fn random_reencryption()->bool {
     }
 }
 
-fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<[u32; 2]>{
-    let mut guesses: Vec<[u32; 2]> = Vec::new();
+fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<EncryptionCode>{
+    let mut guesses: Vec<EncryptionCode> = Vec::new();
 
     for _ in 0..n {
         let choice = draw(hand, 2);
-        guesses.push([choice[0], choice[1]]);
+        guesses.push(vec![choice[0], choice[1]]);
     }
     guesses
 }

@@ -12,11 +12,10 @@ pub struct GameConfig {
     pub scherbius_deal: u32,
     pub turing_starting: u32,
     pub turing_deal: u32,
-    pub victory_points: u32,
+    pub victory_points: u32, // how many victory points required to win
     pub n_battles: u32,
-
-    pub encryption_cost: u32,
-    // re-encrypting costs victory points
+    pub encryption_cost: u32, // re-encrypting costs victory points
+    pub encryption_code_len: u32,
 }
 
 #[derive(Debug)]
@@ -25,7 +24,7 @@ struct GameState {
     scherbius_hand: Vec<u32>,
 
     encryption_broken: bool,
-    encryption: [u32; 2],
+    encryption: Vec<u32>,
     // TODO want to vary the number of values used for encryption?!
     // 11^2 = 121. quite hard to break encryption!
 
@@ -41,14 +40,17 @@ impl fmt::Display for GameState {
 
 impl GameState{
     fn new(game_config: &GameConfig) -> GameState {
-        let mut rng = rand::thread_rng(); 
+        let mut rng = rand::thread_rng();
+        let a: u32 = rng.gen_range(1..10);
+        let b: u32 = rng.gen_range(1..10);
+        
         GameState{
             // deal inital random hands
             scherbius_hand: draw_cards(game_config.scherbius_starting),
             turing_hand: draw_cards(game_config.turing_starting),
         
             encryption_broken: false,
-            encryption: [rng.gen_range(1..10), rng.gen_range(1..10)],
+            encryption: vec![a, b],
 
             turing_points: 0,
             scherbius_points: 0,
@@ -141,7 +143,7 @@ impl GameState{
     // reset encryption?
     let mut rng = rand::thread_rng();
     if self.scherbius_points >= game_config.encryption_cost && scherbius_actions.encryption 
-        {self.encryption = [rng.gen_range(1..10), rng.gen_range(1..10)]; 
+        {self.encryption = vec![rng.gen_range(1..10), rng.gen_range(1..10)]; 
         self.encryption_broken=false};
     }
 
@@ -151,6 +153,7 @@ pub type ScherbiusPlayer = fn(&Vec<u32>, &Vec<Reward>) -> ScherbiusAction;
 pub type TuringPlayer = fn(&Vec<u32>, &Vec<Reward>, &Vec<Cards>) -> TuringAction;
 
 pub type Cards = Vec<u32>;
+pub type EncryptionCode = Vec<u32>;
 
 #[derive(Debug)]
 pub enum Actor {
@@ -203,7 +206,7 @@ fn random_rewards(n: u32)->Vec<Reward> {
 #[derive(Debug)]
 pub struct TuringAction {
     pub strategy: Vec<Cards>,
-    pub guesses: Vec<[u32; 2]>,
+    pub guesses: Vec<EncryptionCode>,
 }
 
 #[derive(Debug)]
