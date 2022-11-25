@@ -1,43 +1,46 @@
 use std::io;
 use rand::{thread_rng, Rng};
-use rand::rngs::ThreadRng;
+// use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 
-use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Actor, Cards};
+use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Cards};
 
 
-// fn get_user_input()->u32 {
-//     let mut choice: String = String::new();
-//     io::stdin()
-//         .read_line(&mut choice)
-//         .expect("Failed to read line");
+fn get_user_input()->Cards {
+    let mut choice: String = String::new();
+    io::stdin()
+        .read_line(&mut choice)
+        .expect("Failed to read line");
 
-//     let choice: u32 = choice.trim().parse().expect("Please type a number!");
-//     choice
-// }
+    let choice: u32 = choice.trim().parse().expect("Please type a number!");
+    vec![choice]
+}
 
-// pub fn user_input_player(
-//         observation: &GameState, 
-//         rewards: &Vec<Reward>)
-//         ->Vec<Action> {
-//     println!("{:?}", observation);
-//     println!("{:?}", rewards);
+pub fn user_input_player(
+        scherbius_hand: &Vec<u32>, 
+        rewards: &Vec<Reward>)
+        ->ScherbiusAction{
 
-//     let mut actions: Vec<Action> = Vec::new();
+    // need to verify that the user's chosen cards are actually in their hand.
+    // if not keep asking for a valid choice 
+    println!("Scherbius hand. {:?}", scherbius_hand);
+    println!("Rewards. {:?}", rewards);
 
-//     for i in 0..rewards.len() {
-//         println!("Battle {}", i);
-//         let choice: u32 = get_user_input();
-//         println!("{:?}", choice);
-//         let action = Action {
-//             card1: choice
-//         };
-//         actions.push(action);
-//     }
+    let mut strategy: Vec<Cards> = Vec::new();
 
-//     actions
-// }
+    for i in 0..rewards.len() {
+        println!("Battle {}", i);
+        let choice: Cards = get_user_input();
+        println!("{:?}", choice);
+        strategy.push(choice);
+    }
 
+    ScherbiusAction {
+        strategy: strategy,
+        encryption: true,
+    }
+    // need a callback to print results?
+}
 
 fn draw(deck: &mut Cards, n: usize)->Cards {
     let mut drawn: Vec<u32> = Vec::new();

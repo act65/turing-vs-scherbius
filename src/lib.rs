@@ -224,12 +224,12 @@ fn draw_cards(n: u32)->Cards {
 }
 
 pub fn play(
-        game_config: GameConfig,
-        sherbius: ScherbiusPlayer, 
-        turing: TuringPlayer) -> Actor{
+    game_config: GameConfig,
+    sherbius: ScherbiusPlayer, 
+    turing: TuringPlayer) -> Actor{
 
-        let mut game_state = GameState::new(&game_config);
-        let mut winner: Actor = Actor::Null;
+    let mut game_state = GameState::new(&game_config);
+    let winner: Actor;
 
     loop {
         // what is being played for this round?
