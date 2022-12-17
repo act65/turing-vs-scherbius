@@ -16,6 +16,7 @@ pub struct GameConfig {
     pub n_battles: u32,
     pub encryption_cost: u32, // re-encrypting costs victory points
     pub encryption_code_len: u32,
+    pub verbose: bool,
 }
 
 #[derive(Debug)]
@@ -64,13 +65,6 @@ impl GameState{
         turing_actions: &TuringAction,
         rewards: &Vec<Reward>) {
 
-    // println!("{:?}", self.scherbius_hand);
-    // println!("{:?}", scherbius_actions);
-
-    // println!("{:?}", self.turing_hand);
-    // println!("{:?}", turing_actions);
-
-
     // each player gets some new cards
     let new_cards = draw_cards(game_config.scherbius_deal);
     self.scherbius_hand.extend_from_slice(&new_cards);
@@ -111,9 +105,6 @@ impl GameState{
     // TODO test that;
     // - draw means no one wins
     // - no cards vs cards means cards wins
-
-    // println!("{:?}", rewards);
-    // println!("{:?}", results);
 
     // distribute the rewards
     for (result, reward) in zip(results, rewards) {
@@ -250,6 +241,12 @@ pub fn play(
         // check_action_validity(turing_action);
         // check_action_validity(sherbius_action);
 
+        if game_config.verbose {
+            println!("{:?}", scherbius_action);
+            println!("{:?}", turing_action);
+            println!("{:?}", game_state);
+        }
+
         game_state.step(
                 &game_config,
                 &scherbius_action, 
@@ -268,14 +265,14 @@ pub fn play(
     winner
 }
 
-// #[cfg(test)]
-// mod tests {
 
-//     #[test]
-//     fn test_encrypt() {
-//         let strategy = get_rnd_strategy();
-//         let encryption = (0, 1);
 
-//         assert_eq!();
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_step() {
+        {}
+    }
+}
