@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 use std::iter::zip;
 use rand::{
     thread_rng,
-    distributions::{Distribution, Standard},
     Rng,
     rngs::ThreadRng
 };
@@ -137,7 +136,7 @@ impl GameState{
     // reset encryption?
     let mut rng = rand::thread_rng();
     if self.scherbius_points >= game_config.encryption_cost && scherbius_actions.encryption 
-        {self.encryption = vec![rng.gen_range(1..10), rng.gen_range(1..10)]; 
+        {self.encryption = vec![rng.gen_range(1..10), rng.gen_range(1..10)];
         self.encryption_broken=false};
     }
 
@@ -174,24 +173,22 @@ pub enum Reward {
     Null,
 }
 
-impl Distribution<Reward> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Reward {
-        match rng.gen_range(0..2) {
-            // TODO distribution should make larger values less likely
-            // TODO want a parameter to control the max value in GameConfig?!
-            // TODO move rng to be an arg?
-            0 => Reward::VictoryPoints(rng.gen_range(1..5)),
-            1 => Reward::NewCards(draw_cards(rng.gen_range(1..5))),
-            _ => Reward::Null,
-        }
+fn sample_reward(rng: &mut ThreadRng, max_vp: u32, max_draw: u32) -> Reward {
+    match rng.gen_range(0..2) {
+        // TODO distribution should make larger values less likely
+        // TODO want a parameter to control the max value in GameConfig?!
+        // TODO move rng to be an arg?
+        0 => Reward::VictoryPoints(rng.gen_range(1..max_vp)),
+        1 => Reward::NewCards(draw_cards(rng.gen_range(1..max_draw))),
+        _ => Reward::Null,
     }
 }
 
-fn random_rewards(n: u32)->Vec<Reward> {
-    let mut rewards = Vec::new();
+fn random_rewards(n: u32, rng: &mut ThreadRng)->Vec<Reward> {
+    let mut rewards: Vec<Reward> = Vec::new();
 
     for _ in 0..n {
-        let reward: Reward = rand::random();
+        let reward: Reward = sample_reward(rng, 10, 10);
         rewards.push(reward)
     }
     rewards
@@ -221,37 +218,42 @@ fn draw_cards(n: u32)->Cards {
 }
 
 #[derive(Debug)]
-struct EasyEncrypt {
-    map: Vec<u32>,
-    rng: ThreadRng,
+struct EasyEnigma {
+    // just 2 rotors
+    rotor: [u32; 2],
+    step: [u32; 2],
+    n: u32,
 }
 
-impl EasyEncrypt {
-    fn new(n: u32) -> EasyEncrypt {
-        let mut map: Vec<u32> = (0..n).collect();
+impl EasyEnigma {
+    fn new(n: u32) -> EasyEnigma {
         let mut rng = thread_rng();
         
-        // rng.shuffle(&mut map);
-        map.shuffle(&mut rng);
-
-        EasyEncrypt {
-        map: map,
-        rng: rng
+        EasyEnigma {
+            rotor: [rng.gen_range(0..n), rng.gen_range(0..n)],
+            step: [0, 0],
+            n: n,
         }
     }
 
     fn call(&mut self, array: &Vec<u32>) -> Vec<u32> {
         let mut encrypted_array: Vec<u32> = Vec::new();
+
         for x in array {
-                let y = self.map[*x as usize];
-                encrypted_array.push(y)
+                let y = (*x % (self.rotor[0]+self.step[0])) % (self.rotor[1]+self.step[1]);
+                encrypted_array.push(y);
+
+                self.step[0] = (self.step[0] + 1) % self.n;
+                if self.step[0] % self.n == 0 {
+                    self.step[1] += 1;
+                }
             }
-        return encrypted_array
+
+            return encrypted_array
     }
 
     fn reset(&mut self) {
-        // self.rng.shuffle(&mut self.map);
-        self.map.shuffle(&mut self.rng);
+        self.step = [0, 0];
     }
 }
 
@@ -263,11 +265,13 @@ pub fn play(
     let mut game_state = GameState::new(&game_config);
     let winner: Actor;
 
-    let mut enigma = EasyEncrypt::new(20);
+    // TODO move all fns to use this rng?
+    let mut rng = thread_rng();
+    let mut enigma = EasyEnigma::new(10);
 
     loop {
         // what is being played for this round?
-        let rewards = random_rewards(game_config.n_battles);
+        let rewards = random_rewards(game_config.n_battles, &mut rng);
 
         // Sherbius plays first
         let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);
@@ -279,10 +283,6 @@ pub fn play(
 
         let intercepted_scherbius_strategy = if game_state.encryption_broken {scherbius_action.strategy.clone()}
             else {encrypted_strategy};
-
-        // // cant map a mutable fn?!?
-        // let test = &scherbius_action.strategy.iter().map(enigma.call).collect();
-        // println!("Enc {:?}", test);
 
         // Turing plays second
         let turing_action = turing(&game_state.turing_hand, &rewards, &intercepted_scherbius_strategy);

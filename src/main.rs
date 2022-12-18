@@ -28,8 +28,8 @@ fn main() {
         scherbius_deal: 4,
         turing_starting: 4,
         turing_deal: 3,
-        victory_points: 10,
-        n_battles: 1,
+        victory_points: 20,
+        n_battles: 3,
         encryption_cost: 25,
         encryption_code_len: 1,
         verbose: true

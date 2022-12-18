@@ -10,3 +10,6 @@ Properties.
 - Asymmetric.
 - Partial info.
 - ?
+
+Todos
+- generalise to n players? (tho would need to make symmetric?)

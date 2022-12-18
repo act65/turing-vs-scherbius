@@ -1,10 +1,14 @@
 use std::io;
 use rand::{thread_rng, Rng};
-// use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 
-use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Cards, EncryptionCode};
-
+use turing_vs_scherbius::{
+    ScherbiusAction, 
+    TuringAction, 
+    Reward, 
+    Cards, 
+    EncryptionCode
+};
 
 fn get_user_input(prompt: &String)->Option<u32> {
     println!("{:?}", prompt);
@@ -148,6 +152,7 @@ fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<EncryptionCode>{
     let mut guesses: Vec<EncryptionCode> = Vec::new();
 
     for _ in 0..n {
+        // problem? how many cards in each guess?
         let choice = draw_from_set(hand, 2);
         guesses.push(vec![choice[0], choice[1]]);
     }
