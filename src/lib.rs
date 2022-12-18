@@ -2,9 +2,12 @@ use std::fmt;
 use std::cmp::Ordering;
 use std::iter::zip;
 use rand::{
+    thread_rng,
     distributions::{Distribution, Standard},
     Rng,
+    rngs::ThreadRng
 };
+use rand::prelude::SliceRandom;
 
 #[derive(Debug)]
 pub struct GameConfig {
@@ -217,6 +220,41 @@ fn draw_cards(n: u32)->Cards {
     cards
 }
 
+#[derive(Debug)]
+struct EasyEncrypt {
+    map: Vec<u32>,
+    rng: ThreadRng,
+}
+
+impl EasyEncrypt {
+    fn new(n: u32) -> EasyEncrypt {
+        let mut map: Vec<u32> = (0..n).collect();
+        let mut rng = thread_rng();
+        
+        // rng.shuffle(&mut map);
+        map.shuffle(&mut rng);
+
+        EasyEncrypt {
+        map: map,
+        rng: rng
+        }
+    }
+
+    fn call(&mut self, array: &Vec<u32>) -> Vec<u32> {
+        let mut encrypted_array: Vec<u32> = Vec::new();
+        for x in array {
+                let y = self.map[*x as usize];
+                encrypted_array.push(y)
+            }
+        return encrypted_array
+    }
+
+    fn reset(&mut self) {
+        // self.rng.shuffle(&mut self.map);
+        self.map.shuffle(&mut self.rng);
+    }
+}
+
 pub fn play(
     game_config: GameConfig,
     sherbius: ScherbiusPlayer, 
@@ -225,15 +263,26 @@ pub fn play(
     let mut game_state = GameState::new(&game_config);
     let winner: Actor;
 
+    let mut enigma = EasyEncrypt::new(20);
+
     loop {
         // what is being played for this round?
         let rewards = random_rewards(game_config.n_battles);
 
         // Sherbius plays first
         let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);
-        // let encrypted_strategy = encrypt(&scherbius_action.strategy);
+
+        let mut encrypted_strategy: Vec<Cards> = Vec::new();
+        for h in &scherbius_action.strategy {
+            encrypted_strategy.push(enigma.call(&h));
+        }
+
         let intercepted_scherbius_strategy = if game_state.encryption_broken {scherbius_action.strategy.clone()}
-            else {[[].to_vec()].to_vec()};
+            else {encrypted_strategy};
+
+        // // cant map a mutable fn?!?
+        // let test = &scherbius_action.strategy.iter().map(enigma.call).collect();
+        // println!("Enc {:?}", test);
 
         // Turing plays second
         let turing_action = turing(&game_state.turing_hand, &rewards, &intercepted_scherbius_strategy);
@@ -241,18 +290,18 @@ pub fn play(
         // check_action_validity(turing_action);
         // check_action_validity(sherbius_action);
 
-        if game_config.verbose {
-            println!("{:?}", scherbius_action);
-            println!("{:?}", turing_action);
-            println!("{:?}", game_state);
-        }
-
         game_state.step(
                 &game_config,
                 &scherbius_action, 
                 &turing_action, 
                 &rewards);
 
+        if game_config.verbose {
+            println!("{:?}", scherbius_action);
+            println!("{:?}", turing_action);
+            println!("{:?}", game_state);
+        }
+        
         // check if a player has won
         if game_state.scherbius_points >= game_config.victory_points {
             winner = Actor::Scherbius;

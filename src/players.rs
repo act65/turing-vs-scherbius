@@ -6,41 +6,22 @@ use rand::seq::SliceRandom;
 use turing_vs_scherbius::{ScherbiusAction, TuringAction, Reward, Cards, EncryptionCode};
 
 
-fn get_user_input()->Result<u32> {
+fn get_user_input(prompt: &String)->Option<u32> {
+    println!("{:?}", prompt);
     let mut choice: String = String::new();
     io::stdin()
         .read_line(&mut choice)
         .expect("Failed to read line");
 
-    let choice: u32 = choice.trim().parse().expect("Please type a number!");
-    return Ok(choice)
+    //  "\n" are automatically added
+    if choice.len() == 1 {
+        return None
+    } else {
+        let choice: u32 = choice.trim().parse().expect("Please type a number");
+        return Some(choice)    
+    }
+
 }
-
-// pub fn user_input_player(
-//         scherbius_hand: &Vec<u32>, 
-//         rewards: &Vec<Reward>)
-//         ->ScherbiusAction{
-
-//     // need to verify that the user's chosen cards are actually in their hand.
-//     // if not keep asking for a valid choice 
-//     println!("Scherbius hand. {:?}", scherbius_hand);
-//     println!("Rewards. {:?}", rewards);
-
-//     let mut strategy: Vec<Cards> = Vec::new();
-
-//     for i in 0..rewards.len() {
-//         println!("Battle {}", i);
-//         let choice: Cards = get_user_input();
-//         println!("{:?}", choice);
-//         strategy.push(choice);
-//     }
-
-//     ScherbiusAction {
-//         strategy: strategy,
-//         encryption: true,
-//     }
-//     // need a callback to print results?
-// }
 
 pub fn turing_human_player(
     turing_hand: &Vec<u32>, 
@@ -52,18 +33,21 @@ pub fn turing_human_player(
     println!("{:?}", rewards);
     println!("Hand");
     println!("{:?}", turing_hand);
+    println!("Scherbius strategy");
+    println!("{:?}", encrypted_cards);
 
     let mut hand = turing_hand.clone();
-    const guess_prompt: String = "Choose your guess".to_string();
-    let guesses = choose_from_set(&mut hand, guess_prompt);
 
-    let mut hand = turing_hand.clone();
-    const strategy_prompt: String = "Choose your strategy".to_string();
+    let guess_prompt: String = "Choose your guess".to_string();
+    let guesses = choose_from_set(&mut hand, &guess_prompt);
+
+    let strategy_prompt: String = "Choose your strategy".to_string();
     
-    let mut strategy = Vec<Cards> = Vec::new();
+    let mut strategy: Vec<Cards> = Vec::new();
     for r in rewards {
         println!("Rewards: {:?}", r);
-        strategy.push(choose_from_set(&mut hand, strategy_prompt));
+        println!("Hand {:?}", hand);
+        strategy.push(choose_from_set(&mut hand, &strategy_prompt));
     }
     
     TuringAction {
@@ -72,15 +56,51 @@ pub fn turing_human_player(
     }
 }
 
-fn choose_from_set(deck: &mut Cards, prompt: String)->Cards {
+pub fn scherbius_human_player(
+    scherbius_hand: &Vec<u32>, 
+    rewards: &Vec<Reward>)
+    ->ScherbiusAction{
+
+    println!("Rewards");
+    println!("{:?}", rewards);
+    println!("Hand");
+    println!("{:?}", scherbius_hand);
+
+    let mut hand = vec![0, 1];
+    let encryption_prompt: String = "Choose whether to re-encrypt (0->False, 1->True)".to_string();
+    let choice = get_user_input(&encryption_prompt);
+    let encryption = match choice.into_iter().nth(0) {
+        Some(1) => true,
+        _ => false,
+    };
+
+    let mut hand = scherbius_hand.clone();
+    let strategy_prompt: String = "Choose your strategy".to_string();
+    
+    let mut strategy: Vec<Cards> = Vec::new();
+    for r in rewards {
+        println!("Rewards: {:?}", r);
+        println!("Hand {:?}", hand);
+        strategy.push(choose_from_set(&mut hand, &strategy_prompt));
+    }
+    
+    ScherbiusAction {
+        strategy: strategy,
+        encryption: encryption,
+    }
+}
+
+fn choose_from_set(deck: &mut Cards, prompt: &String)->Cards {
     let mut chosen: Vec<u32> = Vec::new();
-    while Some(get_user_input(prompt)) {
+    while let Some(x) = get_user_input(prompt)  {
 
         if deck.contains(&x) {
             chosen.push(x);
 
             let index = deck.iter().position(|x| x == x).unwrap();
             deck.remove(index);
+        } else {
+            println!("Please choose a number from {:?}", deck);
         }
     }
     return chosen

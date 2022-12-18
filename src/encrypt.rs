@@ -1,5 +1,4 @@
-use rand::{thread_rng, ThreadRng}
-use 
+use rand::{thread_rng, ThreadRng} 
 
 #[derive(Debug)]
 struct EasyEncrypt {
@@ -9,14 +8,24 @@ struct EasyEncrypt {
 
 impl EasyEncrypt {
     fn new(n: u32) {
+        let map = mut (0..n).collect();
+        let rng = mut thread_rng();
+        
+        rng.shuffle(&mut map)
+
         EasyEncrypt {
-        map: mut (0..n).collect(),
-        rng: mut thread_rng()
+        map: map,
+        rng: rng
+        }
     }
 
-    fn call(&mut self, x: u32) -> u32 {
-        // useage vec.map(|x| encrypt.call(x));
-        self.map.get(x).unwrap()
+    fn call(&mut self, array: Vec<u32>) -> Vec<u32> {
+        let mut encrypted_array = Vec<u32>::new();
+        for x in array {
+                let y = self.map.get(x).unwrap();
+                encrypted_array.push(y)
+            }
+        return encrypted_array
     }
 
     fn reset(&mut self) {
