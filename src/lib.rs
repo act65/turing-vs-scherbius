@@ -22,6 +22,8 @@ pub struct GameConfig {
     pub encryption_cost: u32, // re-encrypting costs victory points
     pub encryption_code_len: u32,
     pub verbose: bool,
+    pub max_vp: u32,
+    pub max_draw: u32,
 }
 
 #[derive(Debug)]
@@ -206,7 +208,7 @@ pub enum Reward {
     Null,
 }
 
-fn sample_battle_reward(rng: &mut ThreadRng, max_vp: u32, max_draw: u32) -> Reward {
+fn sample_battle_reward(max_vp: u32, max_draw: u32, rng: &mut ThreadRng) -> Reward {
     match rng.gen_range(0..2) {
         // TODO distribution should make larger values less likely
         // TODO want a parameter to control the max value in GameConfig?!
@@ -217,11 +219,11 @@ fn sample_battle_reward(rng: &mut ThreadRng, max_vp: u32, max_draw: u32) -> Rewa
     }
 }
 
-fn random_rewards(n: u32, rng: &mut ThreadRng)->Vec<Reward> {
+fn random_rewards(n: u32, max_vp: u32, max_draw: u32, rng: &mut ThreadRng)->Vec<Reward> {
     let mut rewards: Vec<Reward> = Vec::new();
 
     for _ in 0..n {
-        let reward: Reward = sample_battle_reward(rng, 10, 10);
+        let reward: Reward = sample_battle_reward(max_vp, max_draw, rng);
         rewards.push(reward)
     }
     rewards
@@ -259,11 +261,13 @@ pub fn play(
 
     // TODO move all fns to use this rng?
     let mut rng = thread_rng();
-    // let mut enigma = EasyEnigma::new(10);
 
     loop {
         // what is being played for this round?
-        let rewards = random_rewards(game_config.n_battles, &mut rng);
+        let rewards = random_rewards(
+            game_config.max_vp, 
+            game_config.max_draw,
+            game_config.n_battles, &mut rng);
 
         // Sherbius plays first
         let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);

@@ -27,12 +27,12 @@ impl EasyEnigma {
         let mut encrypted_array: Vec<u32> = Vec::new();
 
         for x in array {
-                let y = (*x % (self.rotor[0]+self.step[0])) % (self.rotor[1]+self.step[1]);
+                let y = (*x % (self.rotor[0]+self.step[0]+1)) % (self.rotor[1]+self.step[1]+1);
                 encrypted_array.push(y);
 
-                self.step[0] = (self.step[0] % self.n) + 1;
+                self.step[0] = (self.step[0]+1) % self.n;
                 if self.step[0] % self.n == 0 {
-                    self.step[1] = (self.step[1] % self.n)+1;
+                    self.step[1] = (self.step[1]+1) % self.n;
                 }
             }
 

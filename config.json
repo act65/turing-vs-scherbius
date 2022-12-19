@@ -7,5 +7,7 @@
     "n_battles": 10,
     "encryption_cost": 25,
     "encryption_code_len": 2,
+    "max_draw": 10,
+    "max_vp": 10,
     "verbose": true
 }
