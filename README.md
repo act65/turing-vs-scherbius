@@ -13,3 +13,5 @@ Properties.
 
 Todos
 - generalise to n players? (tho would need to make symmetric?)
+- python api
+- change to using arrays. for speed?

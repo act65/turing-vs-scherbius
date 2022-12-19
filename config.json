@@ -7,6 +7,5 @@
     "n_battles": 10,
     "encryption_cost": 25,
     "encryption_code_len": 2,
-    "sherbius_player_is_human": "False",
-    "turing_player_is_human": "False"
+    "verbose": false
 }

@@ -8,7 +8,9 @@ use rand::{
 };
 use rand::prelude::SliceRandom;
 
-#[derive(Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GameConfig {
     pub scherbius_starting: u32,
     pub scherbius_deal: u32,
@@ -310,6 +312,9 @@ pub fn play(
             winner = Actor::Turing;
             break;
         }
+    }
+    if game_config.verbose {
+        println!("Winner: {:?}", winner);
     }
     winner
 }
