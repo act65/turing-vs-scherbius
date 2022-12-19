@@ -7,25 +7,82 @@ use rand::{
     rngs::ThreadRng
 };
 use rand::prelude::SliceRandom;
+use pyo3::prelude::*;
 
 pub mod enigma;
 use serde::{Serialize, Deserialize};
 
+use std::fs;
+use serde_json::from_str;
+
+#[pyclass]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GameConfig {
+    #[pyo3(get, set)]
     pub scherbius_starting: u32,
+    #[pyo3(get, set)]
     pub scherbius_deal: u32,
+    #[pyo3(get, set)]
     pub turing_starting: u32,
+    #[pyo3(get, set)]
     pub turing_deal: u32,
+    #[pyo3(get, set)]
     pub victory_points: u32, // how many victory points required to win
+    #[pyo3(get, set)]
     pub n_battles: u32,
+    #[pyo3(get, set)]
     pub encryption_cost: u32, // re-encrypting costs victory points
+    #[pyo3(get, set)]
     pub encryption_code_len: u32,
-    pub verbose: bool,
+    #[pyo3(get, set)]
     pub max_vp: u32,
+    #[pyo3(get, set)]
     pub max_draw: u32,
+    #[pyo3(get, set)]
+    pub verbose: bool,
 }
 
+#[pyfunction]
+pub fn read_config(path: String) -> GameConfig {
+    let data = fs::read_to_string(path).expect("Unable to read file");
+    let game_config: GameConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    return game_config
+}
+
+#[pymethods]
+impl GameConfig {
+    #[new]
+    pub fn new(scherbius_starting: u32,
+        scherbius_deal: u32,
+        turing_starting: u32,
+        turing_deal: u32,
+        victory_points: u32,
+        n_battles: u32,
+        encryption_cost: u32,
+        encryption_code_len: u32,
+        max_vp: u32,
+        max_draw: u32,
+        verbose: bool) -> GameConfig {
+        GameConfig {
+            scherbius_starting: scherbius_starting,
+            scherbius_deal: scherbius_deal,
+            turing_starting: turing_starting,
+            turing_deal: turing_deal,
+            victory_points: victory_points,
+            n_battles: n_battles,
+            encryption_cost: encryption_cost,
+            encryption_code_len: encryption_code_len,
+            max_vp: max_vp,
+            max_draw: max_draw,
+            verbose: verbose
+        }
+    }
+}
+
+
+
+
+// #[pyclass]
 #[derive(Debug)]
 struct GameState {
     turing_hand: Vec<u32>,
@@ -44,13 +101,15 @@ struct GameState {
 
 }
 
-impl fmt::Display for GameState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Turing: {:?}\nSherbius: {:?}", self.turing_hand, self.scherbius_hand)
-    }
-}
+// impl fmt::Display for GameState {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "Turing: {:?}\nSherbius: {:?}", self.turing_hand, self.scherbius_hand)
+//     }
+// }
 
+// #[pymethods]
 impl GameState{
+    // #[new]
     fn new(game_config: &GameConfig) -> GameState {
         let mut rng = rand::thread_rng();
         let a: u32 = rng.gen_range(1..10);
@@ -176,6 +235,18 @@ impl GameState{
 
     }
 }
+
+#[pymodule]
+fn turing_vs_scherbius(_py: Python, m: &PyModule) -> PyResult<()> {
+
+    m.add_function(wrap_pyfunction!(read_config, m)?)?;
+
+    m.add_class::<GameConfig>()?;
+    // m.add_class::<GameState>()?;
+
+    Ok(())
+}
+
 
 pub type ScherbiusPlayer = fn(&Vec<u32>, &Vec<Reward>) -> ScherbiusAction;
 pub type TuringPlayer = fn(&Vec<u32>, &Vec<Reward>, &Vec<Cards>) -> TuringAction;

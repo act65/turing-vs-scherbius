@@ -1,15 +1,10 @@
-use turing_vs_scherbius::play;
-use turing_vs_scherbius::GameConfig;
-use std::fs;
-use serde_json::from_str;
+use turing_vs_scherbius::{
+    play,
+    GameConfig,
+    read_config
+}
 
 mod players;
-
-fn read_config(path: String) -> GameConfig {
-    let data = fs::read_to_string(path).expect("Unable to read file");
-    let game_config: GameConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
-    return game_config
-}
 
 fn main() {
     let path: String = "config.json".to_string(); 
