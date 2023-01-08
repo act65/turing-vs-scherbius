@@ -1,6 +1,6 @@
 ## Scherbius versus Turing
 
-__Arthur Scherbius__ built the Engima encryption machine. It was used in World War 2 to encrypt German miliarly communications. __Alan Turing__ is credited with breaking the encrpytion and using the intel to win the war. 
+__Arthur Scherbius__ built the Engima encryption machine. It was used in World War 2 to encrypt German miliarly communications. __Alan Turing__ is credited with 'breaking' the Enigma encrpytion and using the intel to win the war. 
 
 > Alan Turing: We need your help, to keep this a secret from Admiralty, Army, RAF, uh...as no one can know, that we've broken Enigma, not even Dennison.<br>
 ...<br>
@@ -15,7 +15,7 @@ To win this game as 'Turing', this game requires you to;
 
 ***
 
-Idea for game from Nick Johnstone (aka Widdershin).
+The idea for this game is from a friend (Nick Johnstone aka Widdershin).
 https://replit.com/@Widdershin/TuringVsScherbius#main.rb
 
 I have implemented his idea with some small changes;
@@ -23,7 +23,7 @@ I have implemented his idea with some small changes;
 - encryption is based on a 'simple' version of enimga. Aka, a 2 rotor polynumeric substitution cipher.
 - re-encryption now costs victory points
 - Can send as many or as few resources to a single battle as you like (rather than max 2).
-- The code supposts any number of battles.
+- The code supports any number of battles.
 
 ***
 
@@ -32,9 +32,24 @@ Properties.
 - Partial info.
 - Discrete states and actions.
 
-***
+## Installation / playing
 
-Todos
+(assumes you have rust installed)
+
+```bash
+git clone git@github.com:act65/turing-vs-scherbius.git
+cd turing-vs-scherbius
+cargo run
+```
+
+
+
+## Development
+
+- python api (WIP using pyo3)
 - generalise to n players? (tho would need to make symmetric?)
-- python api
+- gui
 - change to using arrays. for speed?
+- add 'map' / topology to battles. they have locations. resources (such as food / ammo / weapons / soldiers ...) must be moved between them (rather than just allocated).
+- implement some decent computer players (via RL)
+- hyper search through different configs to find the 'best' verson of this game (most even, many counter plays, )

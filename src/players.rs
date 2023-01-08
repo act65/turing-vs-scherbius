@@ -42,10 +42,10 @@ pub fn turing_human_player(
 
     let mut hand = turing_hand.clone();
 
-    let guess_prompt: String = "Choose your guess".to_string();
+    let guess_prompt: String = "Choose your guess (enter to skip)".to_string();
     let guesses = choose_from_set(&mut hand, &guess_prompt);
 
-    let strategy_prompt: String = "Choose your strategy".to_string();
+    let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     
     let mut strategy: Vec<Cards> = Vec::new();
     for r in rewards {
@@ -79,7 +79,7 @@ pub fn scherbius_human_player(
     };
 
     let mut hand = scherbius_hand.clone();
-    let strategy_prompt: String = "Choose your strategy".to_string();
+    let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     
     let mut strategy: Vec<Cards> = Vec::new();
     for r in rewards {
