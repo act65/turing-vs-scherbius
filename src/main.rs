@@ -19,7 +19,7 @@ fn main() {
         game_config,
         // players::scherbius_human_player,
         players::random_scherbius_player,
-        // players::turing_human_player,
-        players::random_turing_player
+        players::turing_human_player,
+        // players::random_turing_player
     );
 }
