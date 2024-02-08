@@ -25,7 +25,6 @@ fn get_user_input(prompt: &str) -> Option<u32> {
     }
 }
 
-
 pub fn turing_human_player(
     turing_hand: &Vec<u32>, 
     rewards: &Vec<Reward>,
@@ -39,20 +38,13 @@ pub fn turing_human_player(
     println!("Scherbius strategy");
     println!("{:?}", encrypted_cards);
 
-    let mut hand = turing_hand.clone();
-
     let guess_prompt: String = "Choose your guess (enter to skip)".to_string();
-    let guesses = choose_from_set(&mut hand, &guess_prompt);
+    let guesses = choose_from_set(&turing_hand, &guess_prompt);
 
     let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     
-    let mut strategy: Vec<Cards> = Vec::new();
-    for r in rewards {
-        println!("Rewards: {:?}", r);
-        println!("Hand {:?}", hand);
-        strategy.push(choose_from_set(&mut hand, &strategy_prompt));
-    }
-    
+    let strategy = get_strategy_from_hand(&turing_hand, &rewards, &strategy_prompt); // Reusing function
+
     TuringAction {
         strategy: strategy,
         guesses: vec![guesses],
@@ -77,15 +69,9 @@ pub fn scherbius_human_player(
         _ => false,
     };
 
-    let mut hand = scherbius_hand.clone();
     let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     
-    let mut strategy: Vec<Cards> = Vec::new();
-    for r in rewards {
-        println!("Rewards: {:?}", r);
-        println!("Hand {:?}", hand);
-        strategy.push(choose_from_set(&mut hand, &strategy_prompt));
-    }
+    let strategy = get_strategy_from_hand(&scherbius_hand, &rewards, &strategy_prompt); // Reusing function
     
     ScherbiusAction {
         strategy: strategy,
@@ -93,20 +79,36 @@ pub fn scherbius_human_player(
     }
 }
 
-fn choose_from_set(deck: &mut Cards, prompt: &String)->Cards {
+fn get_strategy_from_hand(hand: &[u32], rewards: &[Reward], prompt: &str) -> Vec<Cards> {
+    rewards.iter().map(|r| {
+        println!("Rewards: {:?}", r);
+        println!("Hand {:?}", hand);
+        choose_from_set(hand, prompt)  // Fixed to pass a slice reference
+    }).collect()
+}
+
+fn choose_from_set(deck: &[u32], prompt: &str) -> Cards {
     let mut chosen: Vec<u32> = Vec::new();
-    while let Some(x) = get_user_input(prompt)  {
-
-        if deck.contains(&x) {
-            chosen.push(x);
-
-            let index = deck.iter().position(|x| x == x).unwrap();
-            deck.remove(index);
+    loop {
+        if let Some(x) = get_user_input(prompt) {
+            if deck.contains(&x) {
+                chosen.push(x);
+            } else {
+                println!("Please choose a number from {:?}", deck);
+            }
         } else {
-            println!("Please choose a number from {:?}", deck);
+            break; // Exit the loop if no input was given (user pressed enter)
         }
     }
-    return chosen
+    chosen
+}
+
+pub fn remove_chosen_items_from_hand(hand: &mut Vec<u32>, chosen: &[u32]) {
+    for &item in chosen {
+        if let Some(index) = hand.iter().position(|&x| x == item) {
+            hand.remove(index);
+        }
+    }
 }
 
 fn draw_from_set(deck: &mut Cards, n: usize)->Cards {
@@ -128,12 +130,15 @@ fn draw_from_set(deck: &mut Cards, n: usize)->Cards {
 }
 
 fn get_rnd_strategy(hand: &mut Cards, n: usize) -> Vec<Cards> {
-    (0..n)
-        .map(|_| {
-            let k = thread_rng().gen_range(0..=hand.len());
-            hand.choose_multiple(&mut thread_rng(), k).cloned().collect()
-        })
-        .collect()
+    let mut strategy: Vec<Cards> = Vec::new();
+    while !hand.is_empty() {
+        // Calculate max possible size for this subset
+        let max_subset_size = hand.len().max(1); // At least one card subset
+        let subset_size = thread_rng().gen_range(1..=max_subset_size);
+        let choice = draw_from_set(hand, subset_size);
+        strategy.push(choice);
+    }
+    strategy
 }
 
 pub fn random_reencryption() -> bool {

@@ -31,6 +31,32 @@ pub fn remove_played_cards_from_hand(hand: &mut Cards, played: &Vec<Cards>) {
     }
 }
 
+pub fn is_subset_of_hand(strategy: &Vec<Cards>, hand: &Cards) -> bool {
+    // check if strategy is a unique subset of hand
+    // not just a subset
+    let flat_strategy: Vec<u32> = flatten(strategy);
+    let flat_hand: Vec<u32> = hand.clone();
+    is_unique_subset(&flat_strategy, &flat_hand)
+}
+
+fn is_unique_subset(a: &Vec<u32>, b: &Vec<u32>) -> bool {
+    // check if a is a unique subset of b
+    // not just a subset
+    let mut b_copy = b.clone();
+    for c in a.iter() {
+        // if c is in b_copy
+        // then remove it from b_copy
+        if let Some(index) = b_copy.iter().position(|&y| y == *c) {
+            b_copy.remove(index);
+        // if c is not in b_copy
+        // then a is not a subset of b
+        } else {
+            return false
+        }
+    }
+    return true
+}
+
 // tests
 
 #[cfg(test)]

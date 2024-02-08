@@ -43,6 +43,8 @@ struct GameState {
     encoder: enigma::EasyEnigma,
     winner: Actor,
 
+    rng: ThreadRng,
+
 }
 
 impl fmt::Display for GameState {
@@ -58,8 +60,8 @@ impl GameState{
         
         GameState{
             // deal initial random hands
-            scherbius_hand: draw_cards(game_config.scherbius_starting),
-            turing_hand: draw_cards(game_config.turing_starting),
+            scherbius_hand: draw_cards(game_config.scherbius_starting, &mut rng),
+            turing_hand: draw_cards(game_config.turing_starting, &mut rng),
         
             encryption_broken: false,
             encryption: utils::sample_random_ints(game_config.encryption_code_len, game_config.encryption_vocab_size, &mut rng),
@@ -69,6 +71,8 @@ impl GameState{
 
             encoder: enigma::EasyEnigma::new(10, &mut rng),
             winner: Actor::Null,
+
+            rng: rng,
 
         }
     }
@@ -93,10 +97,10 @@ impl GameState{
         rewards: &Vec<Reward>) {
 
     // each player gets some new cards
-    let new_cards = draw_cards(game_config.scherbius_deal);
+    let new_cards = draw_cards(game_config.scherbius_deal, &mut self.rng);
     self.scherbius_hand.extend_from_slice(&new_cards);
 
-    let new_cards = draw_cards(game_config.turing_deal);
+    let new_cards = draw_cards(game_config.turing_deal, &mut self.rng);
     self.turing_hand.extend_from_slice(&new_cards);
 
     // remove cards played from hands
@@ -197,7 +201,7 @@ fn sample_battle_reward(max_vp: u32, max_draw: u32, rng: &mut ThreadRng) -> Rewa
         // TODO want a parameter to control the max value in GameConfig?!
         // TODO move rng to be an arg?
         0 => Reward::VictoryPoints(rng.gen_range(1..max_vp)),
-        1 => Reward::NewCards(draw_cards(rng.gen_range(1..max_draw))),
+        1 => Reward::NewCards(draw_cards(rng.gen_range(1..max_draw), rng)),
         _ => Reward::Null,
     }
 }
@@ -206,27 +210,50 @@ fn random_rewards(n: u32, max_vp: u32, max_draw: u32, rng: &mut ThreadRng)->Vec<
     (0..n).map(|_| sample_battle_reward(max_vp, max_draw, rng)).collect()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TuringAction {
     pub strategy: Vec<Cards>,
     pub guesses: Vec<EncryptionCode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ScherbiusAction {
     pub strategy: Vec<Cards>,
     pub encryption: bool,
 }
 
-fn draw_cards(n: u32)->Cards {
+#[derive(Debug, Clone)]
+pub enum Action {
+    TuringAction(TuringAction),
+    ScherbiusAction(ScherbiusAction),
+}
+
+fn draw_cards(n: u32, rng: &mut ThreadRng) -> Cards {
     let mut cards = Vec::new();
-    let mut rng = rand::thread_rng();
 
     for _ in 0..n {
         let value: u32 = rng.gen_range(1..11);
         cards.push(value)
     }
     cards
+}
+
+fn check_action_validity(action: &Action, hand: &Vec<u32>) {
+    match action {
+        Action::TuringAction(turing_action) => {
+            if !utils::is_subset_of_hand(&turing_action.strategy, hand) {
+                panic!("Strategy is not subset of hand")
+            }
+            if !utils::is_subset_of_hand(&turing_action.guesses, hand) {
+                panic!("Guesses is not subset of hand")
+            }
+        }
+        Action::ScherbiusAction(scherbius_action) => {
+            if !utils::is_subset_of_hand(&scherbius_action.strategy, hand) {
+                panic!("Strategy is not subset of hand")
+            }
+        }
+    }
 }
 
 pub fn play(
@@ -236,16 +263,13 @@ pub fn play(
 
     let mut game_state = GameState::new(&game_config);
 
-    // TODO move all fns to use this rng?
-    let mut rng = thread_rng();
-
     loop {
         // what is being played for this round?
         let rewards = random_rewards(
             game_config.n_battles,
             game_config.max_vp, 
             game_config.max_draw,
-             &mut rng);
+             &mut game_state.rng);
 
         // Sherbius plays first
         let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);
@@ -253,8 +277,8 @@ pub fn play(
         // Turing plays second
         let turing_action = turing(&game_state.turing_hand, &rewards, &intercepted_scherbius_strategy);
 
-        // check_action_validity(turing_action);
-        // check_action_validity(sherbius_action);
+        check_action_validity(&Action::ScherbiusAction(scherbius_action.clone()), &game_state.scherbius_hand);
+        check_action_validity(&Action::TuringAction(turing_action.clone()), &game_state.turing_hand);
 
         game_state.step(
                 &game_config,
