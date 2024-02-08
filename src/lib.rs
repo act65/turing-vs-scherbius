@@ -6,9 +6,9 @@ use rand::{
     Rng,
     rngs::ThreadRng
 };
-use rand::prelude::SliceRandom;
 
 pub mod enigma;
+pub mod utils;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +21,7 @@ pub struct GameConfig {
     pub n_battles: u32,
     pub encryption_cost: u32, // re-encrypting costs victory points
     pub encryption_code_len: u32,
+    pub encryption_vocab_size: u32,
     pub verbose: bool,
     pub max_vp: u32,
     pub max_draw: u32,
@@ -53,8 +54,7 @@ impl fmt::Display for GameState {
 impl GameState{
     fn new(game_config: &GameConfig) -> GameState {
         let mut rng = rand::thread_rng();
-        let a: u32 = rng.gen_range(1..10);
-        let b: u32 = rng.gen_range(1..10);
+
         
         GameState{
             // deal initial random hands
@@ -62,12 +62,12 @@ impl GameState{
             turing_hand: draw_cards(game_config.turing_starting),
         
             encryption_broken: false,
-            encryption: vec![a, b],
+            encryption: utils::sample_random_ints(game_config.encryption_code_len, game_config.encryption_vocab_size, &mut rng),
 
             turing_points: 0,
             scherbius_points: 0,
 
-            encoder: enigma::EasyEnigma::new(10),
+            encoder: enigma::EasyEnigma::new(10, &mut rng),
             winner: Actor::Null,
 
         }
@@ -76,7 +76,7 @@ impl GameState{
     fn intercept_scherbius_strategy(&mut self, strategy: &Vec<Cards>) -> Vec<Cards> {
 
         if self.encryption_broken {
-            return strategy.clone()}
+            return strategy.clone()}  // probs dont need to clone?
         else {
             let mut encrypted_strategy: Vec<Cards> = Vec::new();
             for h in strategy {
@@ -100,26 +100,9 @@ impl GameState{
     self.turing_hand.extend_from_slice(&new_cards);
 
     // remove cards played from hands
-    // TODO move into fn
-    for c in scherbius_action.strategy.iter() {
-        for i in c.iter() {
-            let index = self.scherbius_hand.iter().position(|y| *y == *i).unwrap();
-            self.scherbius_hand.remove(index);    
-        }
-    }
-    for c in turing_action.strategy.iter() {
-        for i in c.iter() {
-            let index = self.turing_hand.iter().position(|y| *y == *i).unwrap();
-            self.turing_hand.remove(index);    
-        }
-    }
-    // remove guesses from turing's hand
-    for g in turing_action.guesses.iter() {
-        for i in g.iter() {
-            let index = self.turing_hand.iter().position(|y| *y == *i).unwrap();
-            self.turing_hand.remove(index);        
-        }
-    }
+    utils::remove_played_cards_from_hand(&mut self.scherbius_hand, &scherbius_action.strategy);
+    utils::remove_played_cards_from_hand(&mut self.turing_hand, &turing_action.strategy);
+    utils::remove_played_cards_from_hand(&mut self.turing_hand, &turing_action.guesses);
 
     // resolve battles
     let results: Vec<_> = zip(
@@ -133,7 +116,7 @@ impl GameState{
 
     // TODO test that;
     // - draw means no one wins
-    // - no cards vs cards means cards wins
+    // - no cards vs has cards means player with cards wins
 
     // distribute the rewards
     for (result, reward) in zip(results, rewards) {
@@ -220,13 +203,7 @@ fn sample_battle_reward(max_vp: u32, max_draw: u32, rng: &mut ThreadRng) -> Rewa
 }
 
 fn random_rewards(n: u32, max_vp: u32, max_draw: u32, rng: &mut ThreadRng)->Vec<Reward> {
-    let mut rewards: Vec<Reward> = Vec::new();
-
-    for _ in 0..n {
-        let reward: Reward = sample_battle_reward(max_vp, max_draw, rng);
-        rewards.push(reward)
-    }
-    rewards
+    (0..n).map(|_| sample_battle_reward(max_vp, max_draw, rng)).collect()
 }
 
 #[derive(Debug)]
@@ -265,9 +242,10 @@ pub fn play(
     loop {
         // what is being played for this round?
         let rewards = random_rewards(
+            game_config.n_battles,
             game_config.max_vp, 
             game_config.max_draw,
-            game_config.n_battles, &mut rng);
+             &mut rng);
 
         // Sherbius plays first
         let scherbius_action = sherbius(&game_state.scherbius_hand, &rewards);

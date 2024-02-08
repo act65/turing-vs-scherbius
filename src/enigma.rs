@@ -1,7 +1,6 @@
 use rand::{
     thread_rng,
     Rng,
-    rngs::ThreadRng
 };
 
 #[derive(Debug)]
@@ -13,9 +12,7 @@ pub struct EasyEnigma {
 }
 
 impl EasyEnigma {
-    pub fn new(n: u32) -> EasyEnigma {
-        let mut rng = thread_rng();
-        
+    pub fn new(n: u32, rng: &mut impl Rng) -> EasyEnigma {
         EasyEnigma {
             rotor: [rng.gen_range(1..n), rng.gen_range(1..n)],
             step: [0, 0],

@@ -10,22 +10,21 @@ use turing_vs_scherbius::{
     EncryptionCode
 };
 
-fn get_user_input(prompt: &String)->Option<u32> {
-    println!("{:?}", prompt);
-    let mut choice: String = String::new();
+fn get_user_input(prompt: &str) -> Option<u32> {
+    println!("{}", prompt);
+    let mut choice = String::new();
     io::stdin()
         .read_line(&mut choice)
         .expect("Failed to read line");
 
-    //  "\n" are automatically added
-    if choice.len() == 1 {
-        return None
+    let choice = choice.trim();
+    if choice.is_empty() {
+        None
     } else {
-        let choice: u32 = choice.trim().parse().expect("Please type a number");
-        return Some(choice)    
+        choice.parse().ok()
     }
-
 }
+
 
 pub fn turing_human_player(
     turing_hand: &Vec<u32>, 
@@ -42,10 +41,10 @@ pub fn turing_human_player(
 
     let mut hand = turing_hand.clone();
 
-    let guess_prompt: String = "Choose your guess".to_string();
+    let guess_prompt: String = "Choose your guess (enter to skip)".to_string();
     let guesses = choose_from_set(&mut hand, &guess_prompt);
 
-    let strategy_prompt: String = "Choose your strategy".to_string();
+    let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     
     let mut strategy: Vec<Cards> = Vec::new();
     for r in rewards {
@@ -79,7 +78,7 @@ pub fn scherbius_human_player(
     };
 
     let mut hand = scherbius_hand.clone();
-    let strategy_prompt: String = "Choose your strategy".to_string();
+    let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     
     let mut strategy: Vec<Cards> = Vec::new();
     for r in rewards {
@@ -128,24 +127,17 @@ fn draw_from_set(deck: &mut Cards, n: usize)->Cards {
     drawn
 }
 
-fn get_rnd_strategy(hand: &mut Cards, n: usize)->Vec<Cards>{
-    let mut strategy: Vec<Cards> = Vec::new();
-    let mut rng = thread_rng();
-
-    for _ in 0..n {
-        // pick a random num of cards
-        let k: u32 = rng.gen_range(0..2);
-        let choice = draw_from_set(hand, k as usize);
-        strategy.push(choice);
-    }
-    strategy
+fn get_rnd_strategy(hand: &mut Cards, n: usize) -> Vec<Cards> {
+    (0..n)
+        .map(|_| {
+            let k = thread_rng().gen_range(0..=hand.len());
+            hand.choose_multiple(&mut thread_rng(), k).cloned().collect()
+        })
+        .collect()
 }
 
-pub fn random_reencryption()->bool {
-    match thread_rng().gen_range(0..5) {
-        0 => true,
-        _ => false,
-    }
+pub fn random_reencryption() -> bool {
+    thread_rng().gen_bool(1.0 / 5.0) // 1 in 5 chance of being true
 }
 
 fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<EncryptionCode>{
