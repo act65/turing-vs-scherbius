@@ -3,7 +3,7 @@
     "scherbius_deal": 4,
     "turing_starting": 4,
     "turing_deal": 3,
-    "victory_points": 100,
+    "victory_points": 10,
     "n_battles": 4,
     "encryption_cost": 25,
     "encryption_code_len": 2,

@@ -1,9 +1,8 @@
 use rand::{
-    thread_rng,
     Rng,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EasyEnigma {
     // just 2 rotors
     rotor: [u32; 2],
