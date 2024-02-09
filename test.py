@@ -20,5 +20,5 @@ while not game_state.is_won():
     counter += 1
     game_state.step(*random_action(game_state.turing_hand(), game_state.scherbius_hand(), game_state.rewards()))
     print(game_state.winner(), game_state.turing_points(), game_state.scherbius_points())
-    print(game_state.rewards())
+    print('rewards', game_state.rewards())
     print(counter)

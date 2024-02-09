@@ -399,16 +399,33 @@ impl PyGameState {
         let mut victory_points: Vec<u32> = Vec::new();
         let mut new_cards: Vec<Vec<u32>> = Vec::new();
 
+        // we need to keep the info about which battle the reward is for
         for reward in rewards {
             match reward {
-                Reward::VictoryPoints(v) => victory_points.push(v),
-                Reward::NewCards(cards) => new_cards.push(cards),
+                Reward::VictoryPoints(v) => {
+                    victory_points.push(v);
+                    new_cards.push(vec![]);
+                },
+                Reward::NewCards(cards) => {
+                    new_cards.push(cards);
+                    victory_points.push(0);
+                },
                 _ => (),
             }
-        }
+        }           
 
         (new_cards, victory_points)
 
+    }
+
+    pub fn turing_observation(&mut self, scherbius_strategy: Vec<Vec<u32>>) -> (Vec<u32>, Vec<Vec<u32>>) {
+        // mut self as we need to update the state of the enigma machine
+        let intercepted_scherbius_strategy = self.inner.intercept_scherbius_strategy(&scherbius_strategy);
+        (self.inner.turing_hand.clone(), intercepted_scherbius_strategy)
+    }
+
+    pub fn scherbius_observation(&self) -> Vec<u32> {
+        self.inner.scherbius_hand.clone()
     }
 }
 
