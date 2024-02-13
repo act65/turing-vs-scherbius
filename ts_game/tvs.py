@@ -1,8 +1,11 @@
 import json
 import pygame
 from turing_vs_scherbius import PyGameState, PyGameConfig
-from ts_game.utils import render_turing, HumanTSPlayer
 from nts_player import NeuralTSPlayer
+
+
+from ts_game.render import Render
+from ts_game.utils import HumanTSPlayer
 
 class TuringVsSherbius():
     def __init__(self, player_name, config_path, load_path):
@@ -22,17 +25,7 @@ class TuringVsSherbius():
 
         self.config = PyGameConfig(**config)
 
-        # Create the players
-        if player_name == 'turing':
-            self.turing = HumanTSPlayer(config, 'turing')
-            self.scherbius = NeuralTSPlayer(config, 'scherbius', load_path)
-            self.render = self._render_turing
-        elif player_name == 'scherbius':
-            self.scherbius = HumanTSPlayer(config, 'scherbius')
-            self.turing = NeuralTSPlayer(config, 'turing', load_path)
-            self.render = self._render_scherbius
-        else:
-            raise ValueError('Invalid player name')
+        self.render = Render(screen, self.config.card_png_folder, player_name)
 
     def run(self):
         game_state = PyGameState(self.config)
@@ -43,8 +36,7 @@ class TuringVsSherbius():
             rewards = game_state.rewards()
             
             # render current state
-            self.render(turing_hand, intercepted_scherbius_hand, scherbius_hand, rewards)
-            pygame.display.flip()
+            self.render.update(turing_hand, intercepted_scherbius_hand, scherbius_hand, rewards)
             self.clock.tick(self.fps)
 
             # get actions
@@ -59,22 +51,3 @@ class TuringVsSherbius():
             )
 
         pygame.quit()
-
-    def _render_turing(self, turing_hand, intercepted_scherbius_strat, scherbius_hand, rewards):
-        """
-        Turing gets to see their own hand 
-        and the intercepted strategy of Scherbius.
-
-        They also see the rewards.
-        """
-        pass
-
-    def _render_scherbius(self, turing_hand, intercepted_scherbius_strat, scherbius_hand, rewards):
-        """
-        Scherbius gets to see their own hand.
-        And the rewards.
-        And the state of their enigma machine.
-        """
-
-    def _render_rewards(self, rewards):
-        pass
