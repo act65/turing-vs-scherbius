@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turing versus Scherbius</title>
+    <script>
+        function displayCards(div_id, cards, width=100) {
+            const handContainer = document.getElementById(div_id);
+            handContainer.innerHTML = ''; // Clear previous cards
+
+            cards.forEach(card => {
+                const img = document.createElement('img');
+                img.src = `/get_card_path?card_name=${card}`;
+                img.alt = card;
+                img.width = width; // Set a fixed width for the card images
+                handContainer.appendChild(img);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Turing versus Scherbius</h1>
+
+    <div id="Hand"></div>
+    {% if user_player == 'turing' %}
+        <script>
+            displayCards("Hand", {{ turingCards | tojson }});
+        </script>
+    {% else %}
+        <script>
+            displayCards("Hand", {{ scherbiusCards | tojson }});
+        </script>
+    {% endif %}
+
+    <h2>Rewards</h2>
+    <div id="Rewards"></div>
+    <script>
+        let counter = 0;
+    </script>
+    {% for reward in rewards %}
+        <script>
+            const rewardContainer = document.getElementById('Rewards');
+            const battle = document.createElement('div');
+            battle.setAttribute('id', 'battle' + counter);
+
+            counter++;
+        </script>
+
+        <script>
+            displayCards('battle' + counter, {{ reward | tojson }}, 50);
+            rewardContainer.appendChild(battle);
+        </script>
+    {% endfor %}
+
+</body>
+</html>

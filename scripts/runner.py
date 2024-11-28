@@ -1,6 +1,6 @@
 import fire
 import json
-from turing_vs_scherbius import PyGameState, PyGameConfig
+
 from nts_player import NTSPlayer
 from rl_utils import ExperienceReplayBuffer
 
@@ -30,6 +30,15 @@ def main(config_path, buffer_address, load_dir):
             scherbius_action.strategy,
             turing_action.guesses,
             scherbius_action.reencrypt
+        )
+
+        buffer.add(
+            turing_hand,
+            intercepted_scherbius_hand,
+            scherbius_hand,
+            turing_action,
+            scherbius_action,
+            rewards,
         )
 
 if __name__ == '__main__':

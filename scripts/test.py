@@ -1,5 +1,5 @@
 import json
-import math
+
 from turing_vs_scherbius import PyGameState, PyGameConfig
 
 def random_action(turing_hand, scherbius_hand, rewards):
@@ -21,4 +21,6 @@ while not game_state.is_won():
     game_state.step(*random_action(game_state.turing_hand(), game_state.scherbius_hand(), game_state.rewards()))
     print(game_state.winner(), game_state.turing_points(), game_state.scherbius_points())
     print('rewards', game_state.rewards())
+    print('turing_hand', game_state.turing_hand())
+    print('scherbius_hand', game_state.scherbius_hand())
     print(counter)

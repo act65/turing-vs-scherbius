@@ -1,0 +1,14 @@
+/home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/deps/pyo3_build_config-81cc39172e94275f.rmeta: /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs /home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config-file.txt /home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config.txt
+
+/home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/deps/libpyo3_build_config-81cc39172e94275f.rlib: /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs /home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config-file.txt /home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config.txt
+
+/home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/deps/pyo3_build_config-81cc39172e94275f.d: /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs /home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs /home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config-file.txt /home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config.txt
+
+/home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs:
+/home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs:
+/home/act65/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs:
+/home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config-file.txt:
+/home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.20.2
+# env-dep:OUT_DIR=/home/act65/Documents/playground/projects/turing-vs-scherbius/target/release/build/pyo3-build-config-1ee328b2d9f862e9/out

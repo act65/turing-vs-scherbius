@@ -24,6 +24,7 @@ class NTSPlayer():
         pass
 
 
+
 class NTSNetwork(nn.Module):
 
     name: str
