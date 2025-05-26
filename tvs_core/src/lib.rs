@@ -94,26 +94,22 @@ impl GameState {
         }
     }
 
-    fn intercept_scherbius_strategy(&mut self, strategy: &Vec<Cards>) -> Vec<Cards> {
-
-        if self.encryption_broken {
-            return strategy.clone()}  // probs dont need to clone?
-        else {
-            let mut encrypted_strategy: Vec<Cards> = Vec::new();
-            for h in strategy {
-                encrypted_strategy.push(self.encoder.call(&h));
-            }
-            return encrypted_strategy}
+    fn intercept_scherbius_strategy(&mut self, strategy: &[Cards]) -> Vec<Cards> {
+    if self.encryption_broken {
+        strategy.to_vec()  // More efficient than clone()
+    } else {
+        strategy.iter().map(|h| self.encoder.call(h)).collect()
+        }
     }
 
     fn step(
         &mut self,
         scherbius_action: &ScherbiusAction,
-        turing_action: &TuringAction) {
+        turing_action: &TuringAction)  -> Result<(), String> {
 
     // check that the actions are valid
-    check_action_validity(&Action::ScherbiusAction(scherbius_action.clone()), &self.scherbius_hand);
-    check_action_validity(&Action::TuringAction(turing_action.clone()), &self.turing_hand);
+    check_action_validity(&Action::ScherbiusAction(scherbius_action.clone()), &self.scherbius_hand)?;
+    check_action_validity(&Action::TuringAction(turing_action.clone()), &self.turing_hand)?;
 
     // each player gets some new cards
     let new_cards = utils::draw_cards(self.game_config.scherbius_deal, &mut self.rng);
@@ -189,6 +185,7 @@ impl GameState {
     
     self.rewards = rewards;
 
+    Ok(())
     }
 }
 
@@ -256,22 +253,23 @@ pub enum Action {
     ScherbiusAction(ScherbiusAction),
 }
 
-fn check_action_validity(action: &Action, hand: &Vec<u32>) {
+fn check_action_validity(action: &Action, hand: &Vec<u32>) -> Result<(), String> {
     match action {
         Action::TuringAction(turing_action) => {
             if !utils::is_subset_of_hand(&turing_action.strategy, hand) {
-                panic!("Strategy is not subset of hand")
+                return Err("Strategy is not subset of hand".to_string());
             }
             if !utils::is_subset_of_hand(&turing_action.guesses, hand) {
-                panic!("Guesses is not subset of hand")
+                return Err("Guesses is not subset of hand".to_string());
             }
         }
         Action::ScherbiusAction(scherbius_action) => {
             if !utils::is_subset_of_hand(&scherbius_action.strategy, hand) {
-                panic!("Strategy is not subset of hand")
+                return Err("Strategy is not subset of hand".to_string());
             }
         }
     }
+    Ok(())
 }
 
 
@@ -362,11 +360,16 @@ impl PyGameState {
         turing_guesses: Vec<Vec<u32>>, 
         reencrypt: bool) -> PyResult<()> {
 
-        self.inner.step(&ScherbiusAction { strategy: scherbius_strategy, encryption: reencrypt },
-                        &TuringAction { strategy: turing_strategy, guesses: turing_guesses });
-
-        Ok(())
+        // Call the inner step method and convert the error type
+        match self.inner.step(
+            &ScherbiusAction { strategy: scherbius_strategy, encryption: reencrypt },
+            &TuringAction { strategy: turing_strategy, guesses: turing_guesses }
+        ) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(e))
+        }
     }
+
 
     pub fn is_won(&self) -> bool {
         self.inner.winner != Actor::Null
@@ -444,4 +447,103 @@ fn turing_vs_scherbius(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGameConfig>()?;
 
     Ok(())
+}
+
+
+// ... existing code ...
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+    use std::sync::Arc;
+
+    fn create_test_config() -> Arc<GameConfig> {
+        Arc::new(GameConfig {
+            scherbius_starting: 5,
+            turing_starting: 5,
+            scherbius_deal: 2,
+            turing_deal: 2,
+            victory_points: 10,
+            n_battles: 3,
+            encryption_cost: 3,
+            encryption_code_len: 2,
+            encryption_vocab_size: 10,
+            max_vp: 3,
+            max_draw: 3,
+            verbose: false,
+        })
+    }
+
+    #[test]
+    fn test_game_initialization() {
+        let config = create_test_config();
+        let game = GameState::new(config);
+        
+        assert_eq!(game.turing_points, 0);
+        assert_eq!(game.scherbius_points, 0);
+        assert_eq!(game.winner, Actor::Null);
+        assert_eq!(game.turing_hand.len(), 5);
+        assert_eq!(game.scherbius_hand.len(), 5);
+        assert!(!game.encryption_broken);
+    }
+
+    #[test]
+    fn test_battle_result() {
+        // Test Turing wins
+        let result = battle_result(&vec![1, 2], &vec![3, 2]);
+        assert_eq!(result, Some(Actor::Turing));
+        
+        // Test Scherbius wins
+        let result = battle_result(&vec![5, 4], &vec![3, 2]);
+        assert_eq!(result, Some(Actor::Scherbius));
+        
+        // Test draw
+        let result = battle_result(&vec![2, 3], &vec![3, 2]);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_game_step() {
+        // Create a deterministic game
+        let config = create_test_config();
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+        
+        let mut game = GameState {
+            turing_hand: vec![1, 2, 3, 4, 5],
+            scherbius_hand: vec![1, 2, 3, 4, 5],
+            encryption_broken: false,
+            encryption: vec![1, 2],
+            turing_points: 0,
+            scherbius_points: 0,
+            encoder: enigma::EasyEnigma::new(10, &mut rng.clone()),
+            winner: Actor::Null,
+            rng: rng,
+            rewards: vec![Reward::VictoryPoints(1), Reward::NewCards(vec![1, 2])],
+            game_config: config,
+        };
+        
+        // Create actions
+        let scherbius_action = ScherbiusAction {
+            strategy: vec![vec![1, 2]],
+            encryption: false,
+        };
+        
+        let turing_action = TuringAction {
+            strategy: vec![vec![3, 4]],
+            guesses: vec![vec![1, 2]], // Correct guess
+        };
+        
+        // Step the game and check result
+        let step_result = game.step(&scherbius_action, &turing_action);
+        assert!(step_result.is_ok());
+        
+        // Check that encryption was broken
+        assert!(game.encryption_broken);
+        
+        // Check points - Turing should win the battle
+        assert_eq!(game.turing_points, 1);
+    }
 }

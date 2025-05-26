@@ -1,6 +1,9 @@
-/target
+/target/*
 *.chatllm
 /assets
 
 *.egg-info
 __pycache__
+
+tvs_core/target/*
+.pytest_cache

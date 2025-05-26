@@ -139,55 +139,86 @@ pub fn remove_played_cards_from_hand(hand: &mut Cards, played: &Vec<Cards>) {
 
 pub fn is_subset_of_hand(strategy: &Vec<Cards>, hand: &Cards) -> bool {
     // check if strategy is a unique subset of hand
-    // not just a subset
     let flat_strategy: Vec<u32> = flatten(strategy);
-    let flat_hand: Vec<u32> = hand.clone();
-    is_unique_subset(&flat_strategy, &flat_hand)
+    // Avoid cloning when not necessary
+    is_unique_subset(&flat_strategy, hand)
 }
 
 fn is_unique_subset(a: &Vec<u32>, b: &Vec<u32>) -> bool {
-    // check if a is a unique subset of b
-    // not just a subset
-    let mut b_copy = b.clone();
+    let mut b_copy = b.clone(); // Clone only once here
     for c in a.iter() {
-        // if c is in b_copy
-        // then remove it from b_copy
         if let Some(index) = b_copy.iter().position(|&y| y == *c) {
             b_copy.remove(index);
-        // if c is not in b_copy
-        // then a is not a subset of b
         } else {
-            return false
+            return false;
         }
     }
-    return true
+    true // Simplified return
 }
 
-// tests
-
 #[cfg(test)]
-// test random ints
-mod test_random_ints {
+mod tests {
+    use super::*;
+    use rand::thread_rng;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     #[test]
     fn test_sample_random_ints() {
-        let mut rng = thread_rng();
-        let n = 10;
-        let max = 100;
-        let result = sample_random_ints(n, max, &mut rng);
-        assert_eq!(result.len(), n as usize);
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+        
+        let result = super::sample_random_ints(10, 100, &mut rng);
+        assert_eq!(result.len(), 10);
         for x in result {
-            assert!(x < max);
+            assert!(x < 100);
         }
     }
-}
-// test flatten
-mod test_flatten {
+
+    #[test]
+    fn test_draw_cards() {
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+        
+        let cards = draw_cards(5, &mut rng);
+        assert_eq!(cards.len(), 5);
+        
+        // All cards should be in range 1-10
+        for card in cards {
+            assert!(card >= 1 && card <= 10);
+        }
+    }
+
+    #[test]
+    fn test_remove_played_cards_from_hand() {
+        let mut hand = vec![1, 2, 3, 4, 5];
+        let played = vec![vec![1, 2], vec![3]];
+        
+        remove_played_cards_from_hand(&mut hand, &played);
+        assert_eq!(hand, vec![4, 5]);
+    }
+
+    #[test]
+    fn test_is_subset_of_hand() {
+        let hand = vec![1, 2, 3, 4, 5];
+        
+        // Valid strategy
+        let strategy = vec![vec![1, 2], vec![3]];
+        assert!(is_subset_of_hand(&strategy, &hand));
+        
+        // Invalid strategy (using a card twice)
+        let strategy = vec![vec![1, 2], vec![1]];
+        assert!(!is_subset_of_hand(&strategy, &hand));
+        
+        // Invalid strategy (card not in hand)
+        let strategy = vec![vec![1, 2], vec![6]];
+        assert!(!is_subset_of_hand(&strategy, &hand));
+    }
 
     #[test]
     fn test_flatten() {
-        let v = vec![vec![1, 2], vec![3, 4]];
-        let result = flatten(&v);
-        assert_eq!(result, vec![1, 2, 3, 4]);
+        let nested = vec![vec![1, 2], vec![3, 4], vec![]];
+        let flat = flatten(&nested);
+        assert_eq!(flat, vec![1, 2, 3, 4]);
     }
 }
