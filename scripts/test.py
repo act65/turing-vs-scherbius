@@ -6,7 +6,6 @@ def random_action(turing_hand, scherbius_hand, rewards):
     return (
         [[turing_hand[0]]],
         [[scherbius_hand[0]]],
-        [[]],
         False
     )
 

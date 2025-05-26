@@ -41,7 +41,6 @@ game.is_won()            # Returns True if game is over, False otherwise
 game.winner()            # Returns "Turing", "Scherbius", or "Null" (game in progress)
 game.turing_points()     # Returns Turing's current victory points
 game.scherbius_points()  # Returns Scherbius's current victory points
-game.encryption_broken() # Returns True if encryption is broken, False otherwise
 ```
 
 ### Player Hands
@@ -65,7 +64,7 @@ cards_rewards, vp_rewards = game.rewards()
 # Get Turing's observation (includes intercepted Scherbius strategy)
 turing_hand, intercepted_strategy = game.turing_observation(scherbius_strategy)
 # turing_hand: List of Turing's cards
-# intercepted_strategy: List of intercepted Scherbius cards (encrypted if encryption not broken)
+# intercepted_strategy: List of intercepted Scherbius cards (encrypted)
 
 # Get Scherbius's observation
 scherbius_hand = game.scherbius_observation()
@@ -80,7 +79,6 @@ scherbius_hand = game.scherbius_observation()
 game.step(
     turing_strategy,     # List of lists of cards Turing plays for each battle
     scherbius_strategy,  # List of lists of cards Scherbius plays for each battle
-    turing_guesses,      # List of encryption code guesses by Turing
     reencrypt            # Boolean flag for Scherbius to re-encrypt
 )
 ```
@@ -89,7 +87,6 @@ game.step(
 
 Cards: Represented as integers (usually 1-10)
 Strategy: List of lists of cards, one list per battle (e.g., [[1, 2], [3, 4], []])
-Encryption Guesses: List of potential encryption codes (e.g., [[1, 2], [3, 4]])
 Rewards: Tuple of (card_rewards, victory_point_rewards)
 
 ### Example Usage
@@ -115,10 +112,9 @@ while not game.is_won():
     # Player 2 (Turing) observes and decides strategy
     turing_hand, intercepted_scherbius = game.turing_observation(scherbius_strategy)
     turing_strategy = [[turing_hand[0], turing_hand[1]]]
-    turing_guesses = [[turing_hand[2], turing_hand[3]]]
     
     # Execute game step
-    game.step(turing_strategy, scherbius_strategy, turing_guesses, reencrypt)
+    game.step(turing_strategy, scherbius_strategy, reencrypt)
     
     # Check rewards
     cards_rewards, vp_rewards = game.rewards()
@@ -126,7 +122,6 @@ while not game.is_won():
     
     # Print current score
     print(f"Score - Turing: {game.turing_points()}, Scherbius: {game.scherbius_points()}")
-    print(f"Encryption broken: {game.encryption_broken()}")
 
 # Print winner
 print(f"Game over! Winner: {game.winner()}")

@@ -2,32 +2,25 @@ import os
 from flask import Flask, render_template, jsonify, request
 import random
 
-try:
-    import turing_vs_scherbius as tvs
-except ImportError:
-    import sys
-    sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
-    try:
-        import turing_vs_scherbius as tvs
-    except ImportError:
-        raise ImportError("Could not import turing_vs_scherbius. Please ensure it's in the Python path or same directory.")
+import turing_vs_scherbius as tvs
 
 app = Flask(__name__)
 
 GAME_CONFIG = tvs.PyGameConfig(
-    scherbius_starting=5, scherbius_deal=2,
-    turing_starting=5, turing_deal=2,
-    victory_points=10, n_battles=3,
-    encryption_cost=0, # This might be irrelevant now
-    encryption_code_len=0, # Setting to 0 or removing its use
+    scherbius_starting=7, scherbius_deal=2,
+    turing_starting=5, turing_deal=1,
+    victory_points=100, n_battles=4,
+    encryption_cost=10,
+    encryption_code_len=1,
     encryption_vocab_size=10, verbose=False,
-    max_vp=10, max_draw=3
+    max_vp=10, max_draw=3,        
+    max_cards_per_battle=3, max_hand_size=30
 )
 
 game_state = {
     "game_instance": None,
     "scherbius_planned_strategy": None,
-    "scherbius_planned_encryption": False, # This might also become irrelevant if encryption mechanic is fully gone
+    "scherbius_planned_encryption": False,
     "last_round_summary": None,
     "turing_observed_scherbius_plays": None,
     "initial_turing_hand_for_turn": []
@@ -76,11 +69,9 @@ def prepare_round_start_data(is_new_round_for_turing=True):
         "scherbius_did_encrypt": s_encrypts, # Still sent for display consistency
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards},
         "turing_points": game.turing_points(),
-        # Scherbius points are not sent directly for display, frontend will show '???'
-        # "scherbius_points": game.scherbius_points(), # Omitted for Turing's view
         "max_victory_points": GAME_CONFIG.max_vp,
         "n_battles": GAME_CONFIG.n_battles,
-        # "encryption_code_len": GAME_CONFIG.encryption_code_len, # Removed
+        "max_cards_per_battle": GAME_CONFIG.max_cards_per_battle,
         "is_game_over": game.is_won(),
         "winner": game.winner() if game.is_won() else "Null",
         "last_round_summary": game_state["last_round_summary"],
@@ -104,7 +95,8 @@ def new_game():
         victory_points=GAME_CONFIG.victory_points, n_battles=GAME_CONFIG.n_battles,
         encryption_cost=GAME_CONFIG.encryption_cost, encryption_code_len=0, # Force no encryption mechanic
         encryption_vocab_size=GAME_CONFIG.encryption_vocab_size, verbose=GAME_CONFIG.verbose,
-        max_vp=GAME_CONFIG.max_vp, max_draw=GAME_CONFIG.max_draw
+        max_vp=GAME_CONFIG.max_vp, max_draw=GAME_CONFIG.max_draw,
+        max_cards_per_battle=GAME_CONFIG.max_cards_per_battle, max_hand_size=GAME_CONFIG.max_hand_size
     )
     game_state["game_instance"] = tvs.PyGameState(current_config)
     game_state["last_round_summary"] = None
@@ -177,8 +169,6 @@ def submit_turing_action():
     game_state["last_round_summary"] = {
         "turing_points_gained_in_round": current_t_points - prev_t_points,
         "scherbius_points_gained_in_round": current_s_points - prev_s_points, # Still useful for summary if shown
-        # "encryption_broken_this_round": False, # Removed
-        # "encryption_attempted_by_turing": False, # Removed
         "battle_details": battle_details_summary,
         "scherbius_encrypted_last_round": scherbius_executed_encryption # Keep if visual effect of encryption remains
     }

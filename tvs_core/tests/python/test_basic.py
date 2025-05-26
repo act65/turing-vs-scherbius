@@ -15,7 +15,9 @@ def test_game_creation():
         encryption_vocab_size=10,
         verbose=False,
         max_vp=3,
-        max_draw=3
+        max_draw=3,
+        max_cards_per_battle=3,
+        max_hand_size=30
     )
     
     game = tvs.PyGameState(config)
@@ -36,28 +38,46 @@ def test_game_step():
         turing_starting=5,
         turing_deal=2,
         victory_points=10,
-        n_battles=3,
+        n_battles=2,  # Expecting 2 battles
         encryption_cost=3,
         encryption_code_len=2,
         encryption_vocab_size=10,
         verbose=False,
         max_vp=3,
-        max_draw=3
+        max_draw=3,
+        max_cards_per_battle=3, # Max 3 cards can be committed to a single battle
+        max_hand_size=30
     )
-    
+
     game = tvs.PyGameState(config)
-    
+
     # Get initial hands
     turing_hand = game.turing_hand()
     scherbius_hand = game.scherbius_hand()
-    
-    # Create some simple strategies
-    turing_strategy = [[turing_hand[0], turing_hand[1]]]
-    scherbius_strategy = [[scherbius_hand[0], scherbius_hand[1]]]
-    
-    # Execute a step
-    game.step(turing_strategy, scherbius_strategy, False)
-    
+
+    # Ensure hands are not empty and have enough cards for the strategy
+    assert len(turing_hand) >= 4, "Turing doesn't have enough cards for the strategy"
+    assert len(scherbius_hand) >= 4, "Scherbius doesn't have enough cards for the strategy"
+
+    # Create strategies for n_battles = 2
+    # Example: Turing plays 2 cards in battle 1, 2 cards in battle 2
+    # Scherbius plays 2 cards in battle 1, 2 cards in battle 2
+    # Make sure these are distinct cards if that's the game rule (utils::is_subset_of_hand checks this)
+
+    turing_strategy = [
+        [turing_hand[0], turing_hand[1]],  # Cards for battle 1 (2 cards, <= max_cards_per_battle)
+        [turing_hand[2], turing_hand[3]]   # Cards for battle 2 (2 cards, <= max_cards_per_battle)
+    ]
+    scherbius_strategy = [
+        [scherbius_hand[0], scherbius_hand[1]], # Cards for battle 1
+        [scherbius_hand[2], scherbius_hand[3]]  # Cards for battle 2
+    ]
+
+    try:
+        game.step(turing_strategy, scherbius_strategy, False)
+    except ValueError as e:
+        pytest.fail(f"game.step raised ValueError unexpectedly: {e}")
+
     # Check that hands have changed (cards were played and new ones drawn)
     assert game.turing_hand() != turing_hand
     assert game.scherbius_hand() != scherbius_hand
@@ -81,7 +101,9 @@ def test_observation():
         encryption_vocab_size=10,
         verbose=False,
         max_vp=3,
-        max_draw=3
+        max_draw=3,
+        max_cards_per_battle=3,
+        max_hand_size=30
     )
     
     game = tvs.PyGameState(config)
