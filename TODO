@@ -1,8 +1,4 @@
-+ also. there's a silent error if we choose the same card more than once.
-- turing's view sherbius' strategy. should hide which battle sherbius is sending resources to. could implement this by encoding the index of which battle each resource is going to.
-- not sure we are actually removing cards from hand!? 
 - old rewards that noone won could loop to the next round.
 - seed the game
-- rewards can be mixed amounts of resources.
-- write rust tests
-- visual interface
+- remove guess encryption key
+- need a hparam for max number of cards playable on a reward!?

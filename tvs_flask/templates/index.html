@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turing vs Scherbius (Lib v3)</title>
+    <title>Turing vs Scherbius (Lib v4 - No Guess)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -17,28 +17,22 @@
         <div class="scores-summary-box">
             <h2>Game Status</h2>
             <p>Turing Points: <span id="turingScore">0</span></p>
-            <p>Scherbius Points: <span id="scherbiusScore">0</span></p>
+            <p>Scherbius Points: <span id="scherbiusScore">???</span></p> <!-- Changed -->
             <p>Target to Win: <span id="maxVictoryPoints">N/A</span></p>
-            <p>Scherbius Encrypted Current Round: <span id="scherbiusDidEncryptGlobal">N/A</span></p>
         </div>
 
         <div id="lastRoundSummaryArea" style="display:none;">
             <h3>Last Round Battle Results</h3>
-            <!-- Overall points gained will be inferred from score changes -->
-            <p id="lastRoundEncryptionInfo"></p> 
+            <p id="lastRoundInfo"></p> <!-- General info like points gained -->
             <div id="lastRoundSummaryBattles" class="battle-container summary-battle-container">
                 <!-- Populated by JS: per-battle summary -->
             </div>
         </div>
 
         <div id="gameArea" style="display:none;">
-            <!-- Scherbius's Observed Area REMOVED from here -->
-            
             <div id="battleZoneArea">
                 <h3>Current Battles & Rewards (Drag Your Cards Here)</h3>
-                <div id="rewardsDisplay" class="battle-container interactive-battle-container">
-                    <!-- Populated by JS with battle slots that include Scherbius's observed plays -->
-                </div>
+                <div id="rewardsDisplay" class="battle-container interactive-battle-container"></div>
             </div>
             
             <div id="turingActionControls">
@@ -47,10 +41,11 @@
                     <div id="turingHand" class="card-source"></div>
                 </div>
 
-                <div id="turingGuessArea">
+                <!-- Turing Guess Area REMOVED -->
+                <!-- <div id="turingGuessArea">
                     <h3>Guess Encryption Key (<span id="encryptionCodeLen">N/A</span> cards):</h3>
                     <div id="encryptionGuessSlots" class="card-source"></div>
-                </div>
+                </div> -->
                 <button id="submitTuringActionBtn">Submit Actions</button>
             </div>
         </div>

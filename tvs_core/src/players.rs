@@ -28,15 +28,11 @@ pub fn turing_human_player(
     println!("Scherbius strategy");
     println!("{:?}", encrypted_cards);
 
-    let guess_prompt: String = "Choose your guess (enter to skip)".to_string();
-    let guesses = utils::choose_from_set(&turing_hand, &guess_prompt);
-
     let strategy_prompt: String = "Choose your strategy (enter to end)".to_string();
     let strategy = get_strategy_from_hand(&turing_hand, &rewards, &strategy_prompt);
 
     TuringAction {
         strategy: strategy,
-        guesses: vec![guesses],
     }
 }
 
@@ -66,17 +62,6 @@ pub fn scherbius_human_player(
     }
 }
 
-fn get_rnd_guesses(hand: &mut Cards, n: usize)->Vec<EncryptionCode>{
-    let mut guesses: Vec<EncryptionCode> = Vec::new();
-
-    for _ in 0..n {
-        // problem? how many cards in each guess?
-        let choice = utils::draw_from_set(hand, 2);
-        guesses.push(vec![choice[0], choice[1]]);
-    }
-    guesses
-}
-
 pub fn random_scherbius_player(
         scherbius_hand: &Vec<u32>, 
         rewards: &Vec<Reward>)
@@ -99,11 +84,9 @@ pub fn random_turing_player(
     ->TuringAction{
 
     let mut hand = turing_hand.clone();
-    let guesses = get_rnd_guesses(&mut hand, 1);
     let strategy = utils::get_rnd_strategy(&mut hand, rewards.len());
 
     TuringAction {
         strategy: strategy,
-        guesses: guesses,
     }
 }

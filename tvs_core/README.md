@@ -113,7 +113,7 @@ while not game.is_won():
     reencrypt = False
     
     # Player 2 (Turing) observes and decides strategy
-    turing_hand, intercepted = game.turing_observation(scherbius_strategy)
+    turing_hand, intercepted_scherbius = game.turing_observation(scherbius_strategy)
     turing_strategy = [[turing_hand[0], turing_hand[1]]]
     turing_guesses = [[turing_hand[2], turing_hand[3]]]
     

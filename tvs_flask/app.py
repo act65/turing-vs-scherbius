@@ -2,7 +2,15 @@ import os
 from flask import Flask, render_template, jsonify, request
 import random
 
-import turing_vs_scherbius as tvs
+try:
+    import turing_vs_scherbius as tvs
+except ImportError:
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
+    try:
+        import turing_vs_scherbius as tvs
+    except ImportError:
+        raise ImportError("Could not import turing_vs_scherbius. Please ensure it's in the Python path or same directory.")
 
 app = Flask(__name__)
 
@@ -10,7 +18,8 @@ GAME_CONFIG = tvs.PyGameConfig(
     scherbius_starting=5, scherbius_deal=2,
     turing_starting=5, turing_deal=2,
     victory_points=10, n_battles=3,
-    encryption_cost=0, encryption_code_len=2,
+    encryption_cost=0, # This might be irrelevant now
+    encryption_code_len=0, # Setting to 0 or removing its use
     encryption_vocab_size=10, verbose=False,
     max_vp=10, max_draw=3
 )
@@ -18,18 +27,15 @@ GAME_CONFIG = tvs.PyGameConfig(
 game_state = {
     "game_instance": None,
     "scherbius_planned_strategy": None,
-    "scherbius_planned_encryption": False,
+    "scherbius_planned_encryption": False, # This might also become irrelevant if encryption mechanic is fully gone
     "last_round_summary": None,
     "turing_observed_scherbius_plays": None,
-    "initial_turing_hand_for_turn": [] # Will store card objects {id, value}
+    "initial_turing_hand_for_turn": []
 }
-
-def get_card_display_value(card_value): # This function might be redundant if we just use the value
-    return card_value
 
 def scherbius_ai_play(current_scherbius_hand, num_battles):
     strategy = [[] for _ in range(num_battles)]
-    hand_copy = list(current_scherbius_hand) # Assuming current_scherbius_hand is just values
+    hand_copy = list(current_scherbius_hand)
     random.shuffle(hand_copy)
     for i in range(num_battles):
         if not hand_copy: break
@@ -38,26 +44,26 @@ def scherbius_ai_play(current_scherbius_hand, num_battles):
             for _ in range(num_cards_to_play):
                 if hand_copy:
                     strategy[i].append(hand_copy.pop())
-    encrypt = random.choice([True, False])
+    # Scherbius's decision to "encrypt" might still affect how its cards are shown,
+    # even if Turing can't guess. Or this can be removed if not used.
+    # For now, let's assume it might still visually obscure cards.
+    encrypt = random.choice([True, False]) if GAME_CONFIG.encryption_code_len > 0 else False
     return strategy, encrypt
 
 def prepare_round_start_data(is_new_round_for_turing=True):
     global game_state
     game = game_state["game_instance"]
 
-    # Scherbius AI uses its raw hand (list of values)
     scherbius_raw_hand_values = game.scherbius_observation() 
     s_strategy, s_encrypts = scherbius_ai_play(scherbius_raw_hand_values, GAME_CONFIG.n_battles)
     
     game_state["scherbius_planned_strategy"] = s_strategy
     game_state["scherbius_planned_encryption"] = s_encrypts
 
-    # Turing's observation gives their hand values and intercepted Scherbius plays
     turing_hand_values, intercepted_plays = game.turing_observation(s_strategy)
-    game_state["turing_observed_scherbius_plays"] = intercepted_plays # This is Vec<Vec<u32>>
+    game_state["turing_observed_scherbius_plays"] = intercepted_plays
     
     if is_new_round_for_turing:
-        # Assign temporary unique IDs to Turing's hand for client-side D&D
         game_state["initial_turing_hand_for_turn"] = [
             {"id": f"tcard_{idx}", "value": val} for idx, val in enumerate(turing_hand_values)
         ]
@@ -65,15 +71,16 @@ def prepare_round_start_data(is_new_round_for_turing=True):
     card_rewards, vp_rewards = game.rewards()
 
     client_data = {
-        "turing_hand": game_state["initial_turing_hand_for_turn"], # Now a list of {id, value} objects
-        "scherbius_observed_plays": intercepted_plays, # Actual (maybe encrypted) card values
-        "scherbius_did_encrypt": s_encrypts,
+        "turing_hand": game_state["initial_turing_hand_for_turn"],
+        "scherbius_observed_plays": intercepted_plays,
+        "scherbius_did_encrypt": s_encrypts, # Still sent for display consistency
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards},
         "turing_points": game.turing_points(),
-        "scherbius_points": game.scherbius_points(),
+        # Scherbius points are not sent directly for display, frontend will show '???'
+        # "scherbius_points": game.scherbius_points(), # Omitted for Turing's view
         "max_victory_points": GAME_CONFIG.max_vp,
         "n_battles": GAME_CONFIG.n_battles,
-        "encryption_code_len": GAME_CONFIG.encryption_code_len,
+        # "encryption_code_len": GAME_CONFIG.encryption_code_len, # Removed
         "is_game_over": game.is_won(),
         "winner": game.winner() if game.is_won() else "Null",
         "last_round_summary": game_state["last_round_summary"],
@@ -90,7 +97,16 @@ def index():
 @app.route('/new_game', methods=['POST'])
 def new_game():
     global game_state
-    game_state["game_instance"] = tvs.PyGameState(GAME_CONFIG)
+    # Re-initialize config if encryption_code_len should be definitively zero
+    current_config = tvs.PyGameConfig(
+        scherbius_starting=GAME_CONFIG.scherbius_starting, scherbius_deal=GAME_CONFIG.scherbius_deal,
+        turing_starting=GAME_CONFIG.turing_starting, turing_deal=GAME_CONFIG.turing_deal,
+        victory_points=GAME_CONFIG.victory_points, n_battles=GAME_CONFIG.n_battles,
+        encryption_cost=GAME_CONFIG.encryption_cost, encryption_code_len=0, # Force no encryption mechanic
+        encryption_vocab_size=GAME_CONFIG.encryption_vocab_size, verbose=GAME_CONFIG.verbose,
+        max_vp=GAME_CONFIG.max_vp, max_draw=GAME_CONFIG.max_draw
+    )
+    game_state["game_instance"] = tvs.PyGameState(current_config)
     game_state["last_round_summary"] = None
     client_data = prepare_round_start_data(is_new_round_for_turing=True)
     return jsonify(client_data)
@@ -102,17 +118,14 @@ def game_state_endpoint():
     
     game = game_state["game_instance"]
     card_rewards, vp_rewards = game.rewards()
-    # Send the currently stored state for Turing, don't re-run AI
     client_data = {
         "turing_hand": game_state["initial_turing_hand_for_turn"],
         "scherbius_observed_plays": game_state["turing_observed_scherbius_plays"],
         "scherbius_did_encrypt": game_state["scherbius_planned_encryption"],
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards },
         "turing_points": game.turing_points(),
-        "scherbius_points": game.scherbius_points(),
         "max_victory_points": GAME_CONFIG.max_vp,
         "n_battles": GAME_CONFIG.n_battles,
-        "encryption_code_len": GAME_CONFIG.encryption_code_len,
         "is_game_over": game.is_won(),
         "winner": game.winner() if game.is_won() else "Null",
         "last_round_summary": game_state["last_round_summary"],
@@ -128,25 +141,26 @@ def submit_turing_action():
         return jsonify({"error": "Game is over or not initialized."}), 400
 
     data = request.json
-    # Client sends strategy and guesses as arrays of card *values*
     turing_submitted_strategy_values = data.get("turing_strategy") 
-    turing_submitted_guesses_values = data.get("turing_guesses")
+    # turing_guesses no longer expected
+    # turing_submitted_guesses_values = data.get("turing_guesses") 
 
     if not isinstance(turing_submitted_strategy_values, list) or \
-       len(turing_submitted_strategy_values) != GAME_CONFIG.n_battles:
+       len(turing_submitted_strategy_values) != GAME_CONFIG.n_battles: # Use game.config here
         return jsonify({"error": "Invalid Turing strategy format."}), 400
-    # TODO: Add validation that submitted card values could have come from initial hand
 
     scherbius_executed_strategy = game_state["scherbius_planned_strategy"]
     scherbius_executed_encryption = game_state["scherbius_planned_encryption"]
 
     prev_t_points = game.turing_points()
-    prev_s_points = game.scherbius_points()
-    prev_encryption_broken_status = game.encryption_broken()
+    # Scherbius points are tracked by the library, not directly by game_state for this calculation
+    # We need to get it from the game instance if we want to calculate points gained by Scherbius for summary
+    prev_s_points = game.scherbius_points() 
+    # prev_encryption_broken_status = game.encryption_broken() # Removed
 
+    # Call game.step without turing_guesses
     game.step(turing_submitted_strategy_values, 
               scherbius_executed_strategy, 
-              turing_submitted_guesses_values, 
               scherbius_executed_encryption)
 
     current_t_points = game.turing_points()
@@ -156,17 +170,17 @@ def submit_turing_action():
     for i in range(GAME_CONFIG.n_battles):
         battle_details_summary.append({
             "battle_id": i,
-            "turing_played": turing_submitted_strategy_values[i], # Values submitted
+            "turing_played": turing_submitted_strategy_values[i],
             "scherbius_committed": scherbius_executed_strategy[i] 
         })
 
     game_state["last_round_summary"] = {
         "turing_points_gained_in_round": current_t_points - prev_t_points,
-        "scherbius_points_gained_in_round": current_s_points - prev_s_points,
-        "encryption_broken_this_round": game.encryption_broken() and not prev_encryption_broken_status,
-        "encryption_attempted_by_turing": bool(turing_submitted_guesses_values and turing_submitted_guesses_values[0]),
+        "scherbius_points_gained_in_round": current_s_points - prev_s_points, # Still useful for summary if shown
+        # "encryption_broken_this_round": False, # Removed
+        # "encryption_attempted_by_turing": False, # Removed
         "battle_details": battle_details_summary,
-        "scherbius_encrypted_last_round": scherbius_executed_encryption
+        "scherbius_encrypted_last_round": scherbius_executed_encryption # Keep if visual effect of encryption remains
     }
     
     client_data = prepare_round_start_data(is_new_round_for_turing=not game.is_won())

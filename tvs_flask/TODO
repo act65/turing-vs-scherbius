@@ -1,6 +1,5 @@
-- need a hparam for max number of cards playable on a reward!?
 - add win rate counter
-- RL agent
+- integrate a RL agent
 - add sound
 - if you double click a card in the rewards it should go back to your hand
-- instead of "Scherbius committed: 2 card(s)", should be "Scherbius played: 3,4" (but they are encrypted) 
+- collect and display the history of past rounds.

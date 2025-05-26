@@ -46,10 +46,7 @@ struct GameState {
     turing_hand: Vec<u32>,
     scherbius_hand: Vec<u32>,
 
-    encryption_broken: bool,
     encryption: Vec<u32>,
-    // TODO want to vary the number of values used for encryption?!
-    // 10^2 = 100. quite hard to break encryption!
 
     turing_points: u32,
     scherbius_points: u32,
@@ -85,7 +82,6 @@ impl GameState {
             turing_hand: utils::draw_cards(game_config.turing_starting, &mut rng),
             turing_points: 0,
             scherbius_points: 0,
-            encryption_broken: false,
             encryption: utils::sample_random_ints(game_config.encryption_code_len, game_config.encryption_vocab_size, &mut rng),
             encoder: enigma::EasyEnigma::new(10, &mut rng),
             winner: Actor::Null,
@@ -95,11 +91,7 @@ impl GameState {
     }
 
     fn intercept_scherbius_strategy(&mut self, strategy: &[Cards]) -> Vec<Cards> {
-    if self.encryption_broken {
-        strategy.to_vec()  // More efficient than clone()
-    } else {
         strategy.iter().map(|h| self.encoder.call(h)).collect()
-        }
     }
 
     fn step(
@@ -120,7 +112,6 @@ impl GameState {
     // remove cards played from hands
     utils::remove_played_cards_from_hand(&mut self.scherbius_hand, &scherbius_action.strategy);
     utils::remove_played_cards_from_hand(&mut self.turing_hand, &turing_action.strategy);
-    utils::remove_played_cards_from_hand(&mut self.turing_hand, &turing_action.guesses);
     // TODO missing removing victory pts for re-encryption?!
 
     // resolve battles
@@ -157,17 +148,11 @@ impl GameState {
 
     }
 
-    // resolve encryption guess
-    for g in turing_action.guesses.iter() {
-        if g == &self.encryption {self.encryption_broken=true}
-    }
-
     // reset encryption?
     let mut rng = rand::thread_rng();
     if self.scherbius_points >= self.game_config.encryption_cost && scherbius_action.encryption 
         {self.encoder.set([rng.gen_range(0..10), rng.gen_range(0..10)]);
-        self.encoder.reset();
-        self.encryption_broken=false};
+        self.encoder.reset();};
 
     // check if a player has won
     if self.scherbius_points >= self.game_config.victory_points {
@@ -237,8 +222,7 @@ fn random_rewards(n: u32, max_vp: u32, max_draw: u32, rng: &mut StdRng)->Vec<Rew
 
 #[derive(Debug, Clone)]
 pub struct TuringAction {
-    pub strategy: Vec<Cards>,
-    pub guesses: Vec<EncryptionCode>,
+    pub strategy: Vec<Cards>
 }
 
 #[derive(Debug, Clone)]
@@ -258,9 +242,6 @@ fn check_action_validity(action: &Action, hand: &Vec<u32>) -> Result<(), String>
         Action::TuringAction(turing_action) => {
             if !utils::is_subset_of_hand(&turing_action.strategy, hand) {
                 return Err("Strategy is not subset of hand".to_string());
-            }
-            if !utils::is_subset_of_hand(&turing_action.guesses, hand) {
-                return Err("Guesses is not subset of hand".to_string());
             }
         }
         Action::ScherbiusAction(scherbius_action) => {
@@ -373,13 +354,12 @@ impl PyGameState {
     pub fn step(&mut self, 
         turing_strategy: Vec<Cards>, 
         scherbius_strategy: Vec<Cards>,
-        turing_guesses: Vec<Vec<u32>>, 
         reencrypt: bool) -> PyResult<()> {
 
         // Call the inner step method and convert the error type
         match self.inner.step(
             &ScherbiusAction { strategy: scherbius_strategy, encryption: reencrypt },
-            &TuringAction { strategy: turing_strategy, guesses: turing_guesses }
+            &TuringAction { strategy: turing_strategy}
         ) {
             Ok(_) => Ok(()),
             Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(e))
@@ -398,10 +378,6 @@ impl PyGameState {
 
     pub fn scherbius_points(&self) -> u32 {
         self.inner.scherbius_points
-    }
-
-    pub fn encryption_broken(&self) -> bool {
-        self.inner.encryption_broken
     }
 
     pub fn turing_hand(&self) -> Vec<u32> {
@@ -502,7 +478,6 @@ mod tests {
         assert_eq!(game.winner, Actor::Null);
         assert_eq!(game.turing_hand.len(), 5);
         assert_eq!(game.scherbius_hand.len(), 5);
-        assert!(!game.encryption_broken);
     }
 
     #[test]
@@ -530,7 +505,6 @@ mod tests {
         let mut game = GameState {
             turing_hand: vec![1, 2, 3, 4, 5],
             scherbius_hand: vec![1, 2, 3, 4, 5],
-            encryption_broken: false,
             encryption: vec![1, 2],
             turing_points: 0,
             scherbius_points: 0,
@@ -548,16 +522,12 @@ mod tests {
         };
         
         let turing_action = TuringAction {
-            strategy: vec![vec![3, 4]],
-            guesses: vec![vec![1, 2]], // Correct guess
+            strategy: vec![vec![3, 4]]
         };
         
         // Step the game and check result
         let step_result = game.step(&scherbius_action, &turing_action);
         assert!(step_result.is_ok());
-        
-        // Check that encryption was broken
-        assert!(game.encryption_broken);
         
         // Check points - Turing should win the battle
         assert_eq!(game.turing_points, 1);

@@ -1,33 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements (same as before) ---
+    // --- DOM Elements ---
     const turingScoreEl = document.getElementById('turingScore');
-    const scherbiusScoreEl = document.getElementById('scherbiusScore');
+    const scherbiusScoreEl = document.getElementById('scherbiusScore'); // Will be set to '???'
     const maxVictoryPointsEl = document.getElementById('maxVictoryPoints');
-    const scherbiusDidEncryptGlobalEl = document.getElementById('scherbiusDidEncryptGlobal');
     const winnerEl = document.getElementById('winner');
     const newGameBtn = document.getElementById('newGameBtn');
     const submitTuringActionBtn = document.getElementById('submitTuringActionBtn');
     const gameAreaEl = document.getElementById('gameArea');
     const gameOverMessageEl = document.getElementById('gameOverMessage');
     const lastRoundSummaryAreaEl = document.getElementById('lastRoundSummaryArea');
-    const lastRoundEncryptionInfoEl = document.getElementById('lastRoundEncryptionInfo');
+    const lastRoundInfoEl = document.getElementById('lastRoundInfo'); // For general summary text
     const lastRoundSummaryBattlesEl = document.getElementById('lastRoundSummaryBattles');
     const rewardsDisplayEl = document.getElementById('rewardsDisplay');
     const turingHandEl = document.getElementById('turingHand');
-    const encryptionGuessSlotsEl = document.getElementById('encryptionGuessSlots');
-    const encryptionCodeLenEl = document.getElementById('encryptionCodeLen');
+    // const encryptionGuessSlotsEl = document.getElementById('encryptionGuessSlots'); // REMOVED
+    // const encryptionCodeLenEl = document.getElementById('encryptionCodeLen'); // REMOVED
 
     // --- Client-Side Game State ---
     let clientState = {
-        initialHandForTurn: [], // Array of {id: "tcard_X", value: Y}
-        currentHandDisplayObjects: [], // Cards currently visually in the hand area {id, value}
-        battlePlays: {},        // { "battle_0": [{id, value}, {id, value}], ... }
-        encryptionGuess: [],    // Array of {id, value} or null, length of encCodeLen
-        nBattles: 0, encCodeLen: 0,
+        initialHandForTurn: [], currentHandDisplayObjects: [],
+        battlePlays: {}, 
+        // encryptionGuess: [], // REMOVED
+        nBattles: 0, 
+        // encCodeLen: 0, // REMOVED
         draggedCard: { id: null, value: null, originType: null, originId: null, element: null }
     };
 
-    // --- API Calls (same as before) ---
+    // --- API Calls (same) ---
     async function fetchApi(endpoint, method = 'GET', body = null) {
         try {
             const options = { method };
@@ -54,20 +53,18 @@ document.addEventListener('DOMContentLoaded', () => {
         gameAreaEl.style.display = 'block';
 
         turingScoreEl.textContent = serverState.turing_points;
-        scherbiusScoreEl.textContent = serverState.scherbius_points;
+        scherbiusScoreEl.textContent = "???"; // Hide Scherbius's score
         maxVictoryPointsEl.textContent = serverState.max_victory_points;
-        scherbiusDidEncryptGlobalEl.textContent = serverState.scherbius_did_encrypt ? 'Yes' : 'No';
         
         clientState.nBattles = serverState.n_battles;
-        clientState.encCodeLen = serverState.encryption_code_len;
-        encryptionCodeLenEl.textContent = clientState.encCodeLen;
+        // clientState.encCodeLen = serverState.encryption_code_len; // REMOVED
+        // encryptionCodeLenEl.textContent = clientState.encCodeLen; // REMOVED
 
         if (serverState.current_phase === "Turing_Action") {
-            // serverState.turing_hand is now array of {id, value}
             clientState.initialHandForTurn = [...(serverState.turing_hand || [])]; 
             clientState.battlePlays = {};
             for(let i=0; i < clientState.nBattles; i++) clientState.battlePlays[`battle_${i}`] = [];
-            clientState.encryptionGuess = new Array(clientState.encCodeLen).fill(null);
+            // clientState.encryptionGuess = new Array(clientState.encCodeLen).fill(null); // REMOVED
         }
         
         renderAllPlayableCardAreas();
@@ -91,25 +88,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Card Rendering and D&D ---
-    function createCardElement(cardObject, originType, originId) { // cardObject is {id, value}
+    function createCardElement(cardObject, originType, originId) {
         const cardDiv = document.createElement('div');
         cardDiv.classList.add('card');
-        cardDiv.textContent = cardObject.value; // Display value
+        cardDiv.textContent = cardObject.value;
         cardDiv.draggable = true;
-        cardDiv.dataset.cardId = cardObject.id;     // Store unique ID
-        cardDiv.dataset.cardValue = cardObject.value; // Store value for convenience if needed
+        cardDiv.dataset.cardId = cardObject.id;
+        cardDiv.dataset.cardValue = cardObject.value;
         cardDiv.dataset.originType = originType;
         cardDiv.dataset.originId = originId;
 
         cardDiv.addEventListener('dragstart', (e) => {
             clientState.draggedCard = { 
-                id: e.target.dataset.cardId, // Use unique ID
-                value: parseInt(e.target.dataset.cardValue), 
-                originType: e.target.dataset.originType,
-                originId: e.target.dataset.originId,
+                id: e.target.dataset.cardId, value: parseInt(e.target.dataset.cardValue), 
+                originType: e.target.dataset.originType, originId: e.target.dataset.originId,
                 element: e.target
             };
-            e.dataTransfer.setData('text/plain', e.target.dataset.cardId); // Transfer ID
+            e.dataTransfer.setData('text/plain', e.target.dataset.cardId);
             setTimeout(() => e.target.classList.add('dragging'), 0);
         });
         cardDiv.addEventListener('dragend', (e) => {
@@ -124,27 +119,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function removeCardFromArrayById(cardArray, cardId) {
         const index = cardArray.findIndex(card => card && card.id === cardId);
-        if (index > -1) {
-            return cardArray.splice(index, 1)[0]; // Remove and return the card object
-        }
+        if (index > -1) return cardArray.splice(index, 1)[0];
         return null;
     }
 
     function renderAllPlayableCardAreas() {
         let cardsEffectivelyInHandObjects = [...clientState.initialHandForTurn];
-        
-        // Filter out cards in battlePlays by ID
         Object.values(clientState.battlePlays).flat().forEach(playedCardObj => {
-            if (playedCardObj) { // Ensure playedCardObj is not null/undefined
+            if (playedCardObj) {
                 cardsEffectivelyInHandObjects = cardsEffectivelyInHandObjects.filter(handCardObj => handCardObj.id !== playedCardObj.id);
             }
         });
-        // Filter out cards in encryptionGuess by ID
-        clientState.encryptionGuess.forEach(guessedCardObj => {
-            if (guessedCardObj) { // Ensure guessedCardObj is not null/undefined
-                cardsEffectivelyInHandObjects = cardsEffectivelyInHandObjects.filter(handCardObj => handCardObj.id !== guessedCardObj.id);
-            }
-        });
+        // No encryptionGuess to filter by
         clientState.currentHandDisplayObjects = cardsEffectivelyInHandObjects;
 
         turingHandEl.innerHTML = '';
@@ -162,62 +148,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
-        encryptionGuessSlotsEl.innerHTML = '';
-        clientState.encryptionGuess.forEach((cardObj, index) => {
-            const slotContainer = document.createElement('div');
-            slotContainer.classList.add('encryption-guess-slot');
-            slotContainer.dataset.guessSlotId = `guess_${index}`;
-            addDropListeners(slotContainer, 'guess', `guess_${index}`);
-            if (cardObj) { // cardObj is {id, value} or null
-                slotContainer.appendChild(createCardElement(cardObj, 'guess', `guess_${index}`));
-            }
-            encryptionGuessSlotsEl.appendChild(slotContainer);
-        });
+        // encryptionGuessSlotsEl.innerHTML = ''; // REMOVED
+        // No rendering of encryption guess slots
     }
     
     function handleCardDrop(targetType, targetId) {
-        const { id: draggedCardId, value: draggedCardValue, originType, originId } = clientState.draggedCard;
+        const { id: draggedCardId } = clientState.draggedCard;
         if (!draggedCardId) return;
 
         let cardObjectToMove = null; 
+        const originType = clientState.draggedCard.originType;
+        const originId = clientState.draggedCard.originId;
 
-        // 1. Remove card object from its logical origin and get the object
         if (originType === 'hand') {
-            // Find the card object from initialHandForTurn that matches the dragged ID
             cardObjectToMove = findCardInArrayById(clientState.initialHandForTurn, draggedCardId);
         } else if (originType === 'battle') {
-            const battleCards = clientState.battlePlays[originId];
-            cardObjectToMove = removeCardFromArrayById(battleCards, draggedCardId);
-        } else if (originType === 'guess') {
-            const guessIndex = parseInt(originId.split('_')[1]);
-            if (clientState.encryptionGuess[guessIndex] && clientState.encryptionGuess[guessIndex].id === draggedCardId) {
-                cardObjectToMove = clientState.encryptionGuess[guessIndex];
-                clientState.encryptionGuess[guessIndex] = null;
-            }
-        }
+            cardObjectToMove = removeCardFromArrayById(clientState.battlePlays[originId], draggedCardId);
+        } 
+        // No 'guess' originType
 
         if (!cardObjectToMove) {
             console.error("Dragged card object not found in origin!", clientState.draggedCard);
-            renderAllPlayableCardAreas(); // Re-render to correct any visual glitch
+            renderAllPlayableCardAreas();
             return;
         }
 
-        // 2. Add card object to its logical destination
         if (targetType === 'hand') {
-            // No explicit add needed; removal from other areas + re-render handles it
+            // Implicitly returned to hand pool
         } else if (targetType === 'battle') {
             if (!clientState.battlePlays[targetId]) clientState.battlePlays[targetId] = [];
-            // Prevent adding same card instance multiple times
             if (!findCardInArrayById(clientState.battlePlays[targetId], cardObjectToMove.id)) {
                  clientState.battlePlays[targetId].push(cardObjectToMove);
             }
-        } else if (targetType === 'guess') {
-            const guessIndex = parseInt(targetId.split('_')[1]);
-            const oldCardInSlot = clientState.encryptionGuess[guessIndex];
-            // If a different card is already in the slot, it's implicitly returned to hand pool
-            // by not being in battlePlays or encryptionGuess anymore after this assignment.
-            clientState.encryptionGuess[guessIndex] = cardObjectToMove;
         }
+        // No 'guess' targetType
         
         renderAllPlayableCardAreas();
     }
@@ -233,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     addDropListeners(turingHandEl, 'hand', 'turingHand');
 
-    // --- UI Rendering for Specific Sections ---
     function renderRewardsAndBattleDropZones(rewardsData, numBattles, scherbiusObservedPlays) {
         rewardsDisplayEl.innerHTML = '';
         for (let i = 0; i < numBattles; i++) {
@@ -252,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let scherbiusInfoHTML = `<div class="scherbius-observed-info">`;
             const scherbiusPlayForBattle = (scherbiusObservedPlays && scherbiusObservedPlays[i]) ? scherbiusObservedPlays[i] : [];
             if (scherbiusPlayForBattle.length > 0) {
-                // Display actual (potentially encrypted) card values
                 scherbiusInfoHTML += `<p>Scherbius played: ${scherbiusPlayForBattle.join(', ')}</p>`;
             } else {
                 scherbiusInfoHTML += `<p>Scherbius played: None</p>`;
@@ -269,10 +231,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderLastRoundSummary(summary) {
-        lastRoundEncryptionInfoEl.innerHTML = `Encryption last round: 
-            Attempted by Turing: ${summary.encryption_attempted_by_turing ? 'Yes' : 'No'}. 
-            Scherbius Encrypted: ${summary.scherbius_encrypted_last_round ? 'Yes' : 'No'}.
-            Result: ${summary.encryption_broken_this_round ? '<strong>Broken!</strong>' : 'Not Broken'}.`;
+        let infoText = `Points Gained This Round - Turing: ${summary.turing_points_gained_in_round}, Scherbius: ${summary.scherbius_points_gained_in_round}. `;
+        lastRoundInfoEl.innerHTML = infoText;
 
         lastRoundSummaryBattlesEl.innerHTML = '';
         summary.battle_details.forEach(battle => {
@@ -282,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h5>Battle ${battle.battle_id}</h5>
                 <p>Turing Played: <span class="cards-list">${battle.turing_played.length > 0 ? battle.turing_played.join(', ') : 'None'}</span></p>
                 <p>Scherbius Committed: <span class="cards-list">${battle.scherbius_committed.length > 0 ? battle.scherbius_committed.join(', ') : 'None'}</span></p>
-            `; // Assuming scherbius_committed in summary is also array of values
+            `;
             lastRoundSummaryBattlesEl.appendChild(reportDiv);
         });
     }
@@ -297,20 +257,15 @@ document.addEventListener('DOMContentLoaded', () => {
     submitTuringActionBtn.addEventListener('click', () => {
         const finalTuringStrategyValues = [];
         for (let i = 0; i < clientState.nBattles; i++) {
-            // Map card objects in battlePlays back to just their values
             finalTuringStrategyValues.push(
                 (clientState.battlePlays[`battle_${i}`] || []).map(cardObj => cardObj.value)
             );
         }
         
-        const finalTuringGuessesValues = (clientState.encryptionGuess.filter(obj => obj !== null).length === clientState.encCodeLen && clientState.encCodeLen > 0) ?
-                                   // Map card objects in encryptionGuess back to just their values
-                                   [clientState.encryptionGuess.filter(obj => obj !== null).map(cardObj => cardObj.value)] 
-                                   : [];
-
+        // finalTuringGuessesValues is no longer needed
         const payload = { 
-            turing_strategy: finalTuringStrategyValues, 
-            turing_guesses: finalTuringGuessesValues 
+            turing_strategy: finalTuringStrategyValues,
+            // turing_guesses: [] // Send empty or omit if backend handles missing key
         };
         console.log("Submitting to backend (values):", payload);
         fetchApi('/submit_turing_action', 'POST', payload);
