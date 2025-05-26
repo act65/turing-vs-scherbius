@@ -1,0 +1,90 @@
+body { font-family: Arial, sans-serif; line-height: 1.6; margin: 10px; background-color: #f0f2f5; color: #333; }
+.container { max-width: 1200px; margin: auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+h1, h2, h3 { color: #333; margin-top: 0.8em; margin-bottom: 0.4em; }
+h1 { text-align: center; color: #0056b3; }
+
+.game-controls, .scores-summary-box, #lastRoundSummaryArea, #battleZoneArea, #turingActionControls, #gameOverMessage {
+    margin-bottom: 15px; padding: 12px; border: 1px solid #d1d9e6; border-radius: 6px; background-color: #f8f9fa;
+}
+
+.scores-summary-box {
+    background-color: #e9ecef; /* Light grey, distinct */
+    border-left: 5px solid #007bff; /* Accent color */
+}
+.scores-summary-box h2 { margin-top: 0; color: #0056b3; }
+.scores-summary-box p { margin: 6px 0; font-size: 0.95em; }
+.scores-summary-box span { font-weight: bold; color: #343a40; }
+
+
+#lastRoundSummaryArea { background-color: #e6f7ff; }
+#lastRoundSummaryArea h3 { color: #0056b3; }
+#lastRoundEncryptionInfo { font-size: 0.9em; margin-bottom: 10px; font-style: italic; }
+
+
+.card-source {
+    display: flex; flex-wrap: wrap; min-height: 75px; padding: 8px;
+    border: 1px dashed #b0c4de; border-radius: 4px; background-color: #e9ecef; margin-top: 5px;
+}
+#turingHand { background-color: #dfefff; margin-bottom:10px; }
+
+.card {
+    display: flex; justify-content: center; align-items: center;
+    width: 48px; height: 70px; padding: 8px; margin: 4px;
+    border: 1px solid #0056b3; border-radius: 4px; background-color: #cce7ff;
+    font-weight: bold; font-size: 1.1em; color: #003d7a;
+    cursor: grab; user-select: none; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    position: relative;
+}
+.card.dragging { opacity: 0.4; border-style: dashed; transform: scale(1.05); }
+
+.battle-container { display: flex; justify-content: space-around; flex-wrap: wrap; }
+
+.interactive-battle-container .battle-item {
+    background-color: #ffffff; width: calc(33% - 24px); min-height: 220px; /* Increased height */
+    padding: 10px; margin: 8px; border: 1px solid #adb5bd; border-radius: 5px;
+    display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.interactive-battle-container .battle-item h4 { margin-top: 0; margin-bottom: 8px; color: #0056b3; }
+.interactive-battle-container .battle-item .reward-info p,
+.interactive-battle-container .battle-item .scherbius-observed-info p { /* New class for Scherbius info */
+    margin: 3px 0; font-size: 0.8em; text-align: center;
+}
+.interactive-battle-container .battle-item .scherbius-observed-info {
+    margin-top: 5px; padding-top: 5px; border-top: 1px dashed #e0e0e0; width: 90%;
+}
+.interactive-battle-container .battle-item .turing-played-cards-area {
+    width: 100%; min-height: 80px; padding: 5px; margin-top: auto; /* Pushes to bottom */
+    border: 2px dashed #c3dae8; border-radius: 4px; background-color: #f1f7fc;
+    display: flex; flex-wrap: wrap; align-content: flex-start;
+}
+.interactive-battle-container .battle-item.drag-over .turing-played-cards-area {
+    border-color: #007bff; background-color: #e6f2ff;
+}
+
+.summary-battle-container .summary-battle-report {
+    background-color: #fdfdfe; width: calc(33% - 24px);
+    padding: 10px; margin: 8px; border: 1px solid #ced4da; border-radius: 5px;
+}
+.summary-battle-container .summary-battle-report h5 { margin-top:0; margin-bottom: 5px; color: #495057; }
+.summary-battle-container .summary-battle-report p { margin: 2px 0; font-size: 0.8em; }
+.summary-battle-container .summary-battle-report .cards-list { font-style: italic; color: #5f676d; }
+
+#turingHand.drag-over { border-color: #007bff; background-color: #d0eaff; }
+#encryptionGuessSlots.drag-over .encryption-guess-slot { border-color: #007bff; background-color: #e6f2ff; }
+
+#encryptionGuessSlots { justify-content: center; }
+.encryption-guess-slot {
+    width: 58px; height: 80px; margin: 5px; border-style: dotted; border-color: #b0c4de;
+    display: flex; justify-content: center; align-items: center;
+}
+
+button {
+    padding: 10px 18px; background-color: #007bff; color: white;
+    border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 1em;
+}
+button:hover { background-color: #0056b3; }
+button:disabled { background-color: #cccccc; cursor: not-allowed; }
+
+#gameOverMessage { background-color: #d4edda; border-color: #c3e6cb; text-align: center; }
+#gameOverMessage h2 { color: #155724; }

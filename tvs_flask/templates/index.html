@@ -3,55 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turing versus Scherbius</title>
-    <script>
-        function displayCards(div_id, cards, width=100) {
-            const handContainer = document.getElementById(div_id);
-            handContainer.innerHTML = ''; // Clear previous cards
-
-            cards.forEach(card => {
-                const img = document.createElement('img');
-                img.src = `/get_card_path?card_name=${card}`;
-                img.alt = card;
-                img.width = width; // Set a fixed width for the card images
-                handContainer.appendChild(img);
-            });
-        }
-    </script>
+    <title>Turing vs Scherbius (Lib v3)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Turing versus Scherbius</h1>
+    <div class="container">
+        <h1>Turing vs Scherbius</h1>
 
-    <div id="Hand"></div>
-    {% if user_player == 'turing' %}
-        <script>
-            displayCards("Hand", {{ turingCards | tojson }});
-        </script>
-    {% else %}
-        <script>
-            displayCards("Hand", {{ scherbiusCards | tojson }});
-        </script>
-    {% endif %}
+        <div class="game-controls">
+            <button id="newGameBtn">New Game</button>
+        </div>
 
-    <h2>Rewards</h2>
-    <div id="Rewards"></div>
-    <script>
-        let counter = 0;
-    </script>
-    {% for reward in rewards %}
-        <script>
-            const rewardContainer = document.getElementById('Rewards');
-            const battle = document.createElement('div');
-            battle.setAttribute('id', 'battle' + counter);
+        <div class="scores-summary-box">
+            <h2>Game Status</h2>
+            <p>Turing Points: <span id="turingScore">0</span></p>
+            <p>Scherbius Points: <span id="scherbiusScore">0</span></p>
+            <p>Target to Win: <span id="maxVictoryPoints">N/A</span></p>
+            <p>Scherbius Encrypted Current Round: <span id="scherbiusDidEncryptGlobal">N/A</span></p>
+        </div>
 
-            counter++;
-        </script>
+        <div id="lastRoundSummaryArea" style="display:none;">
+            <h3>Last Round Battle Results</h3>
+            <!-- Overall points gained will be inferred from score changes -->
+            <p id="lastRoundEncryptionInfo"></p> 
+            <div id="lastRoundSummaryBattles" class="battle-container summary-battle-container">
+                <!-- Populated by JS: per-battle summary -->
+            </div>
+        </div>
 
-        <script>
-            displayCards('battle' + counter, {{ reward | tojson }}, 50);
-            rewardContainer.appendChild(battle);
-        </script>
-    {% endfor %}
+        <div id="gameArea" style="display:none;">
+            <!-- Scherbius's Observed Area REMOVED from here -->
+            
+            <div id="battleZoneArea">
+                <h3>Current Battles & Rewards (Drag Your Cards Here)</h3>
+                <div id="rewardsDisplay" class="battle-container interactive-battle-container">
+                    <!-- Populated by JS with battle slots that include Scherbius's observed plays -->
+                </div>
+            </div>
+            
+            <div id="turingActionControls">
+                <div id="turingHandArea">
+                    <h3>Your Hand:</h3>
+                    <div id="turingHand" class="card-source"></div>
+                </div>
 
+                <div id="turingGuessArea">
+                    <h3>Guess Encryption Key (<span id="encryptionCodeLen">N/A</span> cards):</h3>
+                    <div id="encryptionGuessSlots" class="card-source"></div>
+                </div>
+                <button id="submitTuringActionBtn">Submit Actions</button>
+            </div>
+        </div>
+        
+        <div id="gameOverMessage" style="display:none;">
+            <h2>Game Over!</h2>
+            <p>Winner: <span id="winner"></span></p>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

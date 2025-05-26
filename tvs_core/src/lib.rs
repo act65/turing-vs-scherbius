@@ -276,21 +276,32 @@ fn check_action_validity(action: &Action, hand: &Vec<u32>) -> Result<(), String>
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
-
 #[pyclass]
 #[derive(Clone)]
 pub struct PyGameConfig {
-    scherbius_starting: u32, 
-    scherbius_deal: u32, 
-    turing_starting: u32, 
-    turing_deal: u32, 
-    victory_points: u32, 
-    n_battles: u32, 
-    encryption_cost: u32, 
-    encryption_code_len: u32, 
-    encryption_vocab_size: u32, 
-    verbose: bool, 
-    max_vp: u32, 
+    #[pyo3(get)] // Expose scherbius_starting as a readable property
+    scherbius_starting: u32,
+    #[pyo3(get)] // Expose scherbius_deal as a readable property
+    scherbius_deal: u32,
+    #[pyo3(get)] // Expose turing_starting as a readable property
+    turing_starting: u32,
+    #[pyo3(get)] // Expose turing_deal as a readable property
+    turing_deal: u32,
+    #[pyo3(get)] // Expose victory_points as a readable property
+    victory_points: u32,
+    #[pyo3(get)] // Expose n_battles as a readable property
+    n_battles: u32,
+    #[pyo3(get)] // Expose encryption_cost as a readable property
+    encryption_cost: u32,
+    #[pyo3(get)] // Expose encryption_code_len as a readable property
+    encryption_code_len: u32,
+    #[pyo3(get)] // Expose encryption_vocab_size as a readable property
+    encryption_vocab_size: u32,
+    #[pyo3(get)] // Expose verbose as a readable property
+    verbose: bool,
+    #[pyo3(get)] // Expose max_vp as a readable property
+    max_vp: u32,
+    #[pyo3(get)] // Expose max_draw as a readable property
     max_draw: u32
 }
 
@@ -298,33 +309,38 @@ pub struct PyGameConfig {
 impl PyGameConfig {
     #[new]
     pub fn new(
-        scherbius_starting: u32, 
-        scherbius_deal: u32, 
-        turing_starting: u32, 
-        turing_deal: u32, 
-        victory_points: u32, 
-        n_battles: u32, 
-        encryption_cost: u32, 
-        encryption_code_len: u32, 
-        encryption_vocab_size: u32, 
-        verbose: bool, 
-        max_vp: u32, 
+        scherbius_starting: u32,
+        scherbius_deal: u32,
+        turing_starting: u32,
+        turing_deal: u32,
+        victory_points: u32,
+        n_battles: u32,
+        encryption_cost: u32,
+        encryption_code_len: u32,
+        encryption_vocab_size: u32,
+        verbose: bool,
+        max_vp: u32,
         max_draw: u32) -> Self {
         PyGameConfig {
-            scherbius_starting: scherbius_starting,
-            scherbius_deal: scherbius_deal,
-            turing_starting: turing_starting,
-            turing_deal: turing_deal,
-            victory_points: victory_points,
-            n_battles: n_battles,
-            encryption_cost: encryption_cost,
-            encryption_code_len: encryption_code_len,
-            encryption_vocab_size: encryption_vocab_size,
-            verbose: verbose,
-            max_vp: max_vp,
-            max_draw: max_draw}
+            scherbius_starting, // Rust allows this shorthand if field name matches variable name
+            scherbius_deal,
+            turing_starting,
+            turing_deal,
+            victory_points,
+            n_battles,
+            encryption_cost,
+            encryption_code_len,
+            encryption_vocab_size,
+            verbose,
+            max_vp,
+            max_draw
         }
+    }
+
+    // If you needed setters, you would add #[pyo3(set)] or define explicit setter methods here.
+    // For read-only access from Python to these config values, #[pyo3(get)] on the struct fields is sufficient.
 }
+
 
 #[pyclass]
 struct PyGameState {
