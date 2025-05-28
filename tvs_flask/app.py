@@ -69,7 +69,7 @@ def prepare_round_start_data(is_new_round_for_turing=True):
         "scherbius_did_encrypt": s_encrypts, # Still sent for display consistency
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards},
         "turing_points": game.turing_points(),
-        "max_victory_points": GAME_CONFIG.max_vp,
+        "max_victory_points": GAME_CONFIG.victory_points,
         "n_battles": GAME_CONFIG.n_battles,
         "max_cards_per_battle": GAME_CONFIG.max_cards_per_battle,
         "is_game_over": game.is_won(),

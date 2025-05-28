@@ -1,4 +1,0 @@
-- old rewards that noone won could loop to the next round.
-- seed the game
-- remove guess encryption key
-- need a hparam for max number of cards playable on a reward!?

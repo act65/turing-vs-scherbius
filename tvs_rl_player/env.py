@@ -5,10 +5,6 @@ import bsuite
 from bsuite.environments import base
 import turing_vs_scherbius as tvs # Your game library
 
-# --- Constants agreed upon ---
-MAX_HAND_SIZE = 30
-MAX_CARDS_PER_BATTLE_STRATEGY = 3 # Max cards one player can commit to a single battle
-
 class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environment
     """
     A bsuite Environment wrapper for the Turing vs Scherbius game.
@@ -41,6 +37,8 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         # This might be done in reset() for bsuite, but good to have an instance.
         self._game = tvs.PyGameState(self._config)
         self._n_battles = self._config.n_battles
+        self._max_hand_size = self._config.max_hand_size
+        self._max_cards_per_battle = self._config.max_cards_per_battle
 
         # Internal state for managing opponent's next move, especially for Turing
         self._current_scherbius_strategy_for_turing_obs = None
@@ -54,7 +52,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         """Defines the observation structure for the agent."""
         obs_spec = {
             'my_hand': specs.BoundedArray(
-                shape=(MAX_HAND_SIZE,),
+                shape=(self._max_hand_size,),
                 dtype=int, # Assuming cards are integers
                 minimum=0, # 0 for no card/padding
                 maximum=self._config.encryption_vocab_size, # Or a general card max value
@@ -63,7 +61,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
             'my_points': specs.Array(shape=(), dtype=int, name='player_points'),
             'opponent_points': specs.Array(shape=(), dtype=int, name='opponent_points'),
             'last_round_card_rewards': specs.BoundedArray(
-                shape=(self._n_battles, MAX_CARDS_PER_BATTLE_STRATEGY), # Or just (self._n_battles, max_cards_won)
+                shape=(self._n_battles, self._max_cards_per_battle), # Or just (self._n_battles, max_cards_won)
                 dtype=int, minimum=0, maximum=self._config.encryption_vocab_size, # Or card max value
                 name='card_rewards'
             ),
@@ -75,7 +73,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         }
         if self._player_perspective == "Turing":
             obs_spec['intercepted_scherbius_strategy'] = specs.BoundedArray(
-                shape=(self._n_battles, MAX_CARDS_PER_BATTLE_STRATEGY),
+                shape=(self._n_battles, self._max_cards_per_battle),
                 dtype=int, minimum=0, maximum=self._config.encryption_vocab_size, # Encrypted cards
                 name='intercepted_strategy'
             )
@@ -86,14 +84,14 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         if self._player_perspective == "Turing":
             # Turing's action is just the strategy
             action_spec = specs.BoundedArray(
-                shape=(self._n_battles, MAX_CARDS_PER_BATTLE_STRATEGY),
+                shape=(self._n_battles, self._max_cards_per_battle),
                 dtype=int, minimum=0, maximum=self._config.encryption_vocab_size, # Card values
                 name='turing_strategy'
             )
         else: # Scherbius
             action_spec = {
                 'strategy': specs.BoundedArray(
-                    shape=(self._n_battles, MAX_CARDS_PER_BATTLE_STRATEGY),
+                    shape=(self._n_battles, self._max_cards_per_battle),
                     dtype=int, minimum=0, maximum=self._config.encryption_vocab_size,
                     name='scherbius_strategy'
                 ),
@@ -108,7 +106,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         
         # Common elements
         my_hand_raw = self._game.turing_hand() if self._player_perspective == "Turing" else self._game.scherbius_hand()
-        my_hand_padded = np.zeros(MAX_HAND_SIZE, dtype=int)
+        my_hand_padded = np.zeros(self._max_hand_size, dtype=int)
         my_hand_padded[:len(my_hand_raw)] = my_hand_raw
 
         my_points = self._game.turing_points() if self._player_perspective == "Turing" else self._game.scherbius_points()
@@ -153,7 +151,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         This is called when the agent is Scherbius, and we need to get Turing's action.
         """
         turing_hand_raw, intercepted_raw = self._game.turing_observation(scherbius_intended_strategy_for_current_round)
-        turing_hand_padded = np.zeros(MAX_HAND_SIZE, dtype=int)
+        turing_hand_padded = np.zeros(self._max_hand_size, dtype=int)
         turing_hand_padded[:len(turing_hand_raw)] = turing_hand_raw
 
         intercepted_padded = ... # Pad intercepted_raw
@@ -174,7 +172,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         for Turing's *next* observation.
         """
         scherbius_hand_raw = self._game.scherbius_observation()
-        scherbius_hand_padded = np.zeros(MAX_HAND_SIZE, dtype=int)
+        scherbius_hand_padded = np.zeros(self._max_hand_size, dtype=int)
         scherbius_hand_padded[:len(scherbius_hand_raw)] = scherbius_hand_raw
         
         opponent_obs = {
@@ -194,7 +192,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         # Reset internal reward trackers
         # self._last_cards_rewards_padded = np.zeros((self._n_battles, MAX_CARDS_PER_BATTLE_STRATEGY), dtype=int)
         # self._last_vp_rewards_padded = np.zeros(self._n_battles, dtype=int)
-        self._last_cards_rewards_padded = [[0]*MAX_CARDS_PER_BATTLE_STRATEGY for _ in range(self._n_battles)]
+        self._last_cards_rewards_padded = [[0]*self._max_cards_per_battle for _ in range(self._n_battles)]
         self._last_vp_rewards_padded = [0]*self._n_battles
 
 
@@ -258,7 +256,7 @@ class TvSEnvironment(): # Should inherit from bsuite.environments.base.Environme
         # self._last_cards_rewards_padded = ... pad(cards_rewards_raw) ...
         # self._last_vp_rewards_padded = ... pad(vp_rewards_raw) ...
         print(f"Game step executed. Raw rewards: VP={vp_rewards_raw}, Cards={cards_rewards_raw}")
-        self._last_cards_rewards_padded = [r[:MAX_CARDS_PER_BATTLE_STRATEGY] + [0]*(MAX_CARDS_PER_BATTLE_STRATEGY-len(r)) if isinstance(r, list) else [0]*MAX_CARDS_PER_BATTLE_STRATEGY for r in cards_rewards_raw]
+        self._last_cards_rewards_padded = [r[:self._max_cards_per_battle] + [0]*(MAX_CARDS_PER_BATTLE_STRATEGY-len(r)) if isinstance(r, list) else [0]*MAX_CARDS_PER_BATTLE_STRATEGY for r in cards_rewards_raw]
         self._last_vp_rewards_padded = list(vp_rewards_raw)
 
 
