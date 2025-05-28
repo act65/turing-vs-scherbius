@@ -20,7 +20,7 @@ def test_game_creation():
         max_hand_size=30
     )
     
-    game = tvs.PyGameState(config)
+    game = tvs.PyGameState(config, seed=42)
     
     # Check initial state
     assert game.is_won() == False
