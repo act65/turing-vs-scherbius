@@ -29,6 +29,23 @@
             </div>
         </div>
 
+        <div id="historicalRoundViewArea" style="display:none;">
+            <h3>Historical Round Details</h3>
+            <div class="history-navigation">
+                <button id="prevRoundBtn" disabled>&lt; Previous Round</button>
+                <span id="historicalRoundIndicator">Round X of Y</span>
+                <button id="nextRoundBtn" disabled>Next Round &gt;</button>
+            </div>
+            <div id="historicalRoundContent">
+                <!-- Content will be populated by JavaScript -->
+                <!-- This structure can be similar to lastRoundSummaryArea's content -->
+                <p id="historicalRoundInfo"></p>
+                <div id="historicalRoundBattles" class="battle-container summary-battle-container">
+                    <!-- Populated by JS: per-battle summary for the historical round -->
+                </div>
+            </div>
+        </div>
+
         <div id="gameArea" style="display:none;">
             <div id="battleZoneArea">
                 <h3>Current Battles & Rewards (Drag Your Cards Here)</h3>

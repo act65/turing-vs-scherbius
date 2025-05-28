@@ -14,16 +14,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const rewardsDisplayEl = document.getElementById('rewardsDisplay');
     const turingHandEl = document.getElementById('turingHand');
 
-    // --- Client-Side Game State --- (Same as before)
+    // --- DOM Elements for Historical View ---
+    const historicalRoundViewAreaEl = document.getElementById('historicalRoundViewArea');
+    const prevRoundBtnEl = document.getElementById('prevRoundBtn');
+    const nextRoundBtnEl = document.getElementById('nextRoundBtn');
+    const historicalRoundIndicatorEl = document.getElementById('historicalRoundIndicator');
+    const historicalRoundContentEl = document.getElementById('historicalRoundContent'); // Parent for info + battles
+    const historicalRoundInfoEl = document.getElementById('historicalRoundInfo');
+    const historicalRoundBattlesEl = document.getElementById('historicalRoundBattles');
+
+
+    // --- Client-Side Game State ---
     let clientState = {
         initialHandForTurn: [], currentHandDisplayObjects: [],
         battlePlays: {},
         nBattles: 0,
         maxCardsPerBattle: 0,
-        draggedCard: { id: null, value: null, originType: null, originId: null, element: null, originSlotIndex: null } // Added originSlotIndex
+        draggedCard: { id: null, value: null, originType: null, originId: null, element: null, originSlotIndex: null },
+        scherbius_did_encrypt: false, 
+        roundHistory: [],
+        // currentHistoryViewIndex:
+        // 0 to roundHistory.length - 1 for historical rounds.
+        // roundHistory.length for the current, interactive round.
+        currentHistoryViewIndex: 0, // Default to current round view initially (will be set by history length)
+        latestServerState: null // To cache the latest server state for rendering current round
     };
+    const VIEWING_CURRENT_ROUND_INDEX = () => clientState.roundHistory.length;
 
-    // --- API Calls (Same) ---
+
+    // --- API Calls ---
     async function fetchApi(endpoint, method = 'GET', body = null) {
         try {
             const options = { method };
@@ -55,22 +74,53 @@ document.addEventListener('DOMContentLoaded', () => {
         
         clientState.nBattles = serverState.n_battles;
         clientState.maxCardsPerBattle = serverState.max_cards_per_battle;
+        // Store scherbius_did_encrypt in clientState for easier access in renderRewardsAndBattleDropZones
+        // This is assuming scherbius_did_encrypt is part of the serverState structure at this level
+        clientState.scherbius_did_encrypt = serverState.scherbius_did_encrypt; // For current round encryption status
+        clientState.roundHistory = serverState.round_history || [];
+        clientState.latestServerState = serverState; // Cache the full server state
 
-        if (serverState.current_phase === "Turing_Action") {
+        // On new data, typically view the current round, unless game is over.
+        // If game is over, try to view the last historical round.
+        // If no history and game over, currentHistoryViewIndex might become 0, but VIEWING_CURRENT_ROUND_INDEX() would also be 0.
+        if (serverState.is_game_over) {
+            if (clientState.roundHistory.length > 0) {
+                clientState.currentHistoryViewIndex = clientState.roundHistory.length - 1; // View last historical round
+            } else {
+                // No history, game over (e.g. game over on first round) - show current (empty) state
+                clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
+            }
+        } else {
+             // Default to viewing the current round if game is not over
+            clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
+        }
+
+
+        if (serverState.current_phase === "Turing_Action" && clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX()) {
             clientState.initialHandForTurn = [...(serverState.turing_hand || [])]; 
             clientState.battlePlays = {}; // This will store arrays of card objects
             for(let i=0; i < clientState.nBattles; i++) clientState.battlePlays[`battle_${i}`] = [];
         }
         
-        renderRewardsAndBattleDropZones(serverState.rewards, serverState.n_battles, serverState.scherbius_observed_plays); // Render drop zones first
-        renderAllPlayableCardAreas(); // Then render cards into them and hand
+        renderMainBattleDisplay(serverState); // Unified display function
+        // renderAllPlayableCardAreas() is called within renderMainBattleDisplay if viewing current round
         
-        if (serverState.last_round_summary) {
+        // Manage last round summary visibility based on current view
+        if (serverState.last_round_summary && clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX()) {
             lastRoundSummaryAreaEl.style.display = 'block';
             renderLastRoundSummary(serverState.last_round_summary);
         } else {
             lastRoundSummaryAreaEl.style.display = 'none';
         }
+        
+        // Old historical view area is no longer the primary display, hide it.
+        // Its navigation controls (prev/next buttons, indicator) are now repurposed.
+        historicalRoundViewAreaEl.style.display = 'block'; // Keep the container for nav buttons visible
+        historicalRoundContentEl.style.display = 'none'; // Hide the specific content part of old historical view
+
+        updateHistoryNavigationControls(); 
+        manageRoundViewSpecificUI();
+
 
         if (serverState.is_game_over) {
             gameOverMessageEl.style.display = 'block';
@@ -323,75 +373,174 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     addDropListenersToElement(turingHandEl, true); // Listener for the main hand area
 
-    function renderRewardsAndBattleDropZones(rewardsData, numBattles, scherbiusObservedPlays) {
-        rewardsDisplayEl.innerHTML = ''; // Clear previous battle zones
-        for (let i = 0; i < numBattles; i++) {
-            const battleId = `battle_${i}`;
-            const battleDiv = document.createElement('div');
-            battleDiv.classList.add('battle-item'); // This class is from your original CSS for battle items
-                                                    // If you used .interactive-battle-container .battle-item, ensure this matches.
-                                                    // For consistency, let's assume .battle-item is the primary class.
+    // --- Main Battle Display (Unified for Current and Historical) ---
+    function renderMainBattleDisplay(serverOrFullStateData) {
+        // serverOrFullStateData is the full state from updateGlobalUI (clientState.latestServerState)
+        // when called from navigation, or the direct serverState on first load.
+        const historyIdx = clientState.currentHistoryViewIndex;
+        const isViewingCurrentRound = (historyIdx === VIEWING_CURRENT_ROUND_INDEX());
+        
+        rewardsDisplayEl.innerHTML = ''; // Clear previous content
 
-            // --- Reward Info ---
-            let rewardInfoHTML = `<div class="reward-info"><h4>Battle ${i + 1}</h4>`;
-            const vpReward = rewardsData.vp_rewards[i];
-            const cardRewardArray = rewardsData.card_rewards[i];
-            
-            let hasRewards = false;
-            let rewardsContent = '<div class="display-card-container">';
-            if (vpReward > 0) {
-                rewardsContent += `<div class="display-card vp-reward">${vpReward}</div>`;
-                hasRewards = true;
+        let numBattlesToDisplay, maxCardsPerBattleForDisplay;
+
+        if (isViewingCurrentRound) {
+            numBattlesToDisplay = serverOrFullStateData.n_battles;
+            maxCardsPerBattleForDisplay = clientState.maxCardsPerBattle; // From global clientState for current round
+        } else {
+            const roundData = clientState.roundHistory[historyIdx];
+            if (!roundData || !roundData.battles) {
+                console.error("Historical round data or battles missing for index:", historyIdx);
+                return; // Or display an error message
             }
-            if (cardRewardArray && cardRewardArray.length > 0) {
-                cardRewardArray.forEach(cardVal => {
-                    rewardsContent += `<div class="display-card">${cardVal}</div>`;
-                });
-                hasRewards = true;
+            numBattlesToDisplay = roundData.battles.length;
+            // Calculate max cards based on actual historical data for that round
+            maxCardsPerBattleForDisplay = 0;
+            if (roundData.battles.length > 0) {
+                 maxCardsPerBattleForDisplay = roundData.battles.reduce((maxOverall, battle) => {
+                    const maxInBattle = Math.max(
+                        battle.turing_played_cards.length,
+                        battle.scherbius_committed_cards.length
+                        // We don't have slot structure in historical, so max of played cards is best guess
+                    );
+                    return Math.max(maxOverall, maxInBattle);
+                }, 0);
             }
-            rewardsContent += '</div>';
+             // If for some reason all historical battles had 0 cards, default to a reasonable number like 1 or 3.
+            if (maxCardsPerBattleForDisplay === 0) maxCardsPerBattleForDisplay = 3;
+        }
 
-            if (hasRewards) {
-                rewardInfoHTML += `<p>Rewards: ${rewardsContent}</p>`;
-            } else {
-                rewardInfoHTML += `<p>Rewards: <span class="no-reward-text">None</span></p>`; // Or just don't show "Rewards:" line
+
+        if (isViewingCurrentRound) {
+            // RENDER CURRENT INTERACTIVE ROUND
+            const currentRewards = serverOrFullStateData.rewards;
+            const currentScherbiusObserved = serverOrFullStateData.scherbius_observed_plays;
+            const currentScherbiusEncrypted = serverOrFullStateData.scherbius_did_encrypt;
+
+            for (let i = 0; i < numBattlesToDisplay; i++) {
+                const battleId = `battle_${i}`;
+                const battleDiv = document.createElement('div');
+                battleDiv.classList.add('battle-item');
+
+                // Reward Info (current round)
+                let rewardInfoHTML = `<div class="reward-info"><h4>Battle ${i + 1} (Current)</h4>`;
+                const vpReward = currentRewards.vp_rewards[i];
+                const cardRewardArray = currentRewards.card_rewards[i];
+                let hasRewards = false;
+                let rewardsContent = '<div class="display-card-container">';
+                if (vpReward > 0) {
+                    rewardsContent += `<div class="display-card vp-reward">${vpReward}</div>`;
+                    hasRewards = true;
+                }
+                if (cardRewardArray && cardRewardArray.length > 0) {
+                    cardRewardArray.forEach(cardVal => {
+                        rewardsContent += `<div class="display-card">${cardVal}</div>`;
+                    });
+                    hasRewards = true;
+                }
+                rewardsContent += '</div>';
+                if (hasRewards) {
+                    rewardInfoHTML += `<p>Potential Rewards: ${rewardsContent}</p>`;
+                } else {
+                    rewardInfoHTML += `<p>Potential Rewards: <span class="no-reward-text">None</span></p>`;
+                }
+                rewardInfoHTML += `</div>`;
+
+                // Scherbius Observed Info (current round)
+                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`;
+                const scherbiusPlayForBattle = (currentScherbiusObserved && currentScherbiusObserved[i]) ? currentScherbiusObserved[i] : [];
+                let scherbiusCardsContent = '<div class="display-card-container">';
+                if (scherbiusPlayForBattle.length > 0) {
+                    scherbiusPlayForBattle.forEach(cardVal => {
+                        const cardEl = document.createElement('div');
+                        cardEl.classList.add('display-card', 'scherbius-card');
+                        if (currentScherbiusEncrypted) {
+                            cardEl.classList.add('scherbius-card-encrypted');
+                        }
+                        cardEl.textContent = cardVal;
+                        scherbiusCardsContent += cardEl.outerHTML;
+                    });
+                } else { scherbiusCardsContent += '<span class="no-play-text">None</span>'; }
+                scherbiusCardsContent += '</div>';
+                scherbiusInfoHTML += `<p>Scherbius Will Play: ${scherbiusCardsContent}</p></div>`;
+
+                // Turing's Play Area (ACTIVE Drop Zones)
+                const turingPlayedCardsArea = document.createElement('div');
+                turingPlayedCardsArea.classList.add('turing-played-cards-area');
+                turingPlayedCardsArea.dataset.battleId = battleId;
+                for (let slotIdx = 0; slotIdx < maxCardsPerBattleForDisplay; slotIdx++) {
+                    const slotDiv = document.createElement('div');
+                    slotDiv.classList.add('card-slot');
+                    slotDiv.dataset.battleId = battleId;
+                    slotDiv.dataset.slotIndex = slotIdx;
+                    addDropListenersToElement(slotDiv, false, battleId, slotIdx);
+                    turingPlayedCardsArea.appendChild(slotDiv);
+                }
+                
+                battleDiv.innerHTML = rewardInfoHTML + scherbiusInfoHTML;
+                battleDiv.appendChild(turingPlayedCardsArea);
+                rewardsDisplayEl.appendChild(battleDiv);
             }
-            rewardInfoHTML += `</div>`; // End of .reward-info
+            renderAllPlayableCardAreas(); // Populate active slots with cards from clientState.battlePlays
 
-            // --- Scherbius Info ---
-            let scherbiusInfoHTML = `<div class="scherbius-observed-info">`; // Use this class for styling
-            const scherbiusPlayForBattle = (scherbiusObservedPlays && scherbiusObservedPlays[i]) ? scherbiusObservedPlays[i] : [];
-            
-            let scherbiusCardsContent = '<div class="display-card-container">';
-            if (scherbiusPlayForBattle.length > 0) {
-                scherbiusPlayForBattle.forEach(cardVal => {
-                    scherbiusCardsContent += `<div class="display-card scherbius-card">${cardVal}</div>`;
-                });
-            } else {
-                scherbiusCardsContent += '<span class="no-play-text">None</span>';
-            }
-            scherbiusCardsContent += '</div>';
-            scherbiusInfoHTML += `<p>Scherbius Played: ${scherbiusCardsContent}</p>`;
-            scherbiusInfoHTML += `</div>`; // End of .scherbius-observed-info
+        } else {
+            // RENDER HISTORICAL ROUND (STATIC)
+            const roundData = clientState.roundHistory[historyIdx];
+            if (!roundData) return; // Should not happen if historyIdx is valid
 
+            roundData.battles.forEach(battle => {
+                const battleDiv = document.createElement('div');
+                battleDiv.classList.add('battle-item', 'historical-battle-item');
 
-            // Card Slots Area (same as before)
-            const turingPlayedCardsArea = document.createElement('div');
-            turingPlayedCardsArea.classList.add('turing-played-cards-area');
-            turingPlayedCardsArea.dataset.battleId = battleId;
+                // Historical Reward Info
+                let rewardInfoHTML = `<div class="reward-info"><h4>Battle ${battle.id + 1} (Round ${roundData.round_number})</h4>`;
+                let rewardsContent = '<div class="display-card-container">';
+                let hasRewards = false;
+                if (battle.rewards_available_to_turing.vp > 0) {
+                    rewardsContent += `<div class="display-card vp-reward">${battle.rewards_available_to_turing.vp}</div>`;
+                    hasRewards = true;
+                }
+                if (battle.rewards_available_to_turing.cards && battle.rewards_available_to_turing.cards.length > 0) {
+                    battle.rewards_available_to_turing.cards.forEach(cardVal => {
+                        rewardsContent += `<div class="display-card">${cardVal}</div>`;
+                    });
+                    hasRewards = true;
+                }
+                if (!hasRewards) rewardsContent += '<span class="no-reward-text">None</span>';
+                rewardsContent += '</div>';
+                rewardInfoHTML += `<p>Rewards Turing Could Have Won: ${rewardsContent}</p></div>`;
 
-            for (let slotIdx = 0; slotIdx < clientState.maxCardsPerBattle; slotIdx++) {
-                const slotDiv = document.createElement('div');
-                slotDiv.classList.add('card-slot');
-                slotDiv.dataset.battleId = battleId;
-                slotDiv.dataset.slotIndex = slotIdx;
-                addDropListenersToElement(slotDiv, false, battleId, slotIdx);
-                turingPlayedCardsArea.appendChild(slotDiv);
-            }
-            
-            battleDiv.innerHTML = rewardInfoHTML + scherbiusInfoHTML;
-            battleDiv.appendChild(turingPlayedCardsArea);
-            rewardsDisplayEl.appendChild(battleDiv);
+                // Scherbius Committed Info (past round)
+                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`;
+                let scherbiusCardsContent = '<div class="display-card-container">';
+                if (battle.scherbius_committed_cards.length > 0) {
+                    battle.scherbius_committed_cards.forEach(cardVal => {
+                        const cardEl = document.createElement('div');
+                        cardEl.classList.add('display-card', 'scherbius-card');
+                        if (roundData.scherbius_encrypted_this_round) {
+                            cardEl.classList.add('scherbius-card-encrypted');
+                        }
+                        cardEl.textContent = cardVal;
+                        scherbiusCardsContent += cardEl.outerHTML;
+                    });
+                } else { scherbiusCardsContent += '<span class="no-play-text">None</span>'; }
+                scherbiusCardsContent += '</div>';
+                scherbiusInfoHTML += `<p>Scherbius Committed: ${scherbiusCardsContent}</p></div>`;
+                
+                // Turing's Played Cards (STATIC from past round)
+                let turingPlayedHTML = `<div class="turing-played-cards-area static-played-cards-area"><h4>Turing Played:</h4>`;
+                let turingCardsContent = '<div class="display-card-container">';
+                if (battle.turing_played_cards.length > 0) {
+                    battle.turing_played_cards.forEach(cardVal => {
+                         turingCardsContent += `<div class="display-card turing-summary-card">${cardVal}</div>`;
+                    });
+                } else { turingCardsContent += '<span class="no-play-text">None</span>'; }
+                turingCardsContent += '</div>';
+                turingPlayedHTML += `${turingCardsContent}</div>`;
+
+                battleDiv.innerHTML = rewardInfoHTML + scherbiusInfoHTML + turingPlayedHTML;
+                rewardsDisplayEl.appendChild(battleDiv);
+            });
         }
     }
     
@@ -454,6 +603,11 @@ document.addEventListener('DOMContentLoaded', () => {
     newGameBtn.addEventListener('click', () => {
         lastRoundSummaryAreaEl.style.display = 'none';
         gameOverMessageEl.style.display = 'none';
+        clientState.roundHistory = [];
+        clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); // Set to current round view
+        // renderMainBattleDisplay will be called by updateGlobalUI after fetch
+        // updateHistoryNavigationControls will be called by updateGlobalUI
+        // manageRoundViewSpecificUI will be called by updateGlobalUI
         fetchApi('/new_game', 'POST');
     });
 
@@ -473,8 +627,96 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchApi('/submit_turing_action', 'POST', payload);
     });
 
-    // --- Initial Setup (Same) ---
+    // --- Initial Setup ---
     gameAreaEl.style.display = 'none';
     gameOverMessageEl.style.display = 'none';
     lastRoundSummaryAreaEl.style.display = 'none';
+    // historicalRoundViewAreaEl itself is kept for nav buttons, but content is hidden
+    historicalRoundContentEl.style.display = 'none'; 
+    clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); // Start by viewing current (empty)
+    updateHistoryNavigationControls(); // Initialize button states
+    manageRoundViewSpecificUI();
+
+
+    // --- UI State Management for Current vs. Historical View ---
+    function manageRoundViewSpecificUI() {
+        const isViewingCurrent = clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX();
+        
+        // Default values for when latestServerState might be null (e.g., initial load)
+        const isGameOver = clientState.latestServerState ? clientState.latestServerState.is_game_over : true; 
+        const hasLastRoundSummary = clientState.latestServerState && clientState.latestServerState.last_round_summary;
+
+        turingHandEl.style.display = isViewingCurrent ? 'flex' : 'none'; // Hand is flex
+        submitTuringActionBtn.disabled = !isViewingCurrent || isGameOver;
+        
+        // Last round summary is only shown if viewing the current round AND there is a summary to show
+        if (isViewingCurrent && hasLastRoundSummary) {
+            lastRoundSummaryAreaEl.style.display = 'block';
+            // renderLastRoundSummary is called from updateGlobalUI
+        } else {
+            lastRoundSummaryAreaEl.style.display = 'none';
+        }
+
+        // The main gameArea (which contains rewardsDisplayEl) is always visible
+        // unless the game hasn't started. The content of rewardsDisplayEl changes.
+        // gameAreaEl contains rewardsDisplayEl and turingActionControls (hand)
+        gameAreaEl.style.display = clientState.latestServerState ? 'block' : 'none'; 
+        
+        // The navigation area itself should always be visible if history is potentially available or game started
+        historicalRoundViewAreaEl.style.display = clientState.latestServerState ? 'block' : 'none';
+        // historicalRoundContentEl (the specific content part of the old historical view, like historicalRoundInfoEl) is not used for battle display.
+        // It's hidden in updateGlobalUI and its elements are not populated by renderMainBattleDisplay.
+        // If historicalRoundInfoEl were to be used for general round info outside battle items, that would be a separate display update.
+        // For now, all round specific info is within the battle items or the indicator.
+        historicalRoundContentEl.style.display = 'none'; 
+    }
+
+
+    // --- Navigation Controls Update ---
+    function updateHistoryNavigationControls() {
+        const historyLen = clientState.roundHistory.length;
+        const viewingCurrent = clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX();
+
+        prevRoundBtnEl.disabled = clientState.currentHistoryViewIndex <= 0; // Disabled if viewing oldest history or no history
+        nextRoundBtnEl.disabled = viewingCurrent; // Disabled if viewing current round
+
+        if (viewingCurrent) {
+            if (historyLen > 0) {
+                historicalRoundIndicatorEl.textContent = `Viewing Current Round (After Round ${historyLen})`;
+            } else {
+                historicalRoundIndicatorEl.textContent = "Viewing Current Round (Round 1)";
+            }
+        } else {
+            // Viewing a historical round
+            if (historyLen > 0 && clientState.currentHistoryViewIndex < historyLen) {
+                historicalRoundIndicatorEl.textContent = `Viewing Past Round ${clientState.roundHistory[clientState.currentHistoryViewIndex].round_number} of ${historyLen}`;
+            } else {
+                 // Should not happen if logic is correct, but as a fallback:
+                historicalRoundIndicatorEl.textContent = "History Navigation";
+            }
+        }
+    }
+
+    prevRoundBtnEl.addEventListener('click', () => {
+        if (clientState.currentHistoryViewIndex > 0) {
+            clientState.currentHistoryViewIndex--;
+            renderMainBattleDisplay(clientState.latestServerState); // Re-render main display
+            updateHistoryNavigationControls();
+            manageRoundViewSpecificUI();
+        }
+    });
+
+    nextRoundBtnEl.addEventListener('click', () => {
+        if (clientState.currentHistoryViewIndex < VIEWING_CURRENT_ROUND_INDEX()) {
+            clientState.currentHistoryViewIndex++;
+            renderMainBattleDisplay(clientState.latestServerState); // Re-render main display
+            updateHistoryNavigationControls();
+            manageRoundViewSpecificUI();
+        }
+    });
+
+    // Remove or comment out the old renderHistoricalRound function as its functionality
+    // for displaying battles is now merged into renderMainBattleDisplay.
+    // The elements historicalRoundInfoEl and historicalRoundBattlesEl are also no longer directly used.
+    // function renderHistoricalRound(roundIndex) { ... }
 });

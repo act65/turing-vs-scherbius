@@ -230,6 +230,13 @@ button:disabled { background-color: #cccccc; cursor: not-allowed; }
     color: #59487a;
 }
 
+/* Style for encrypted Scherbius cards */
+.display-card.scherbius-card-encrypted {
+    border: 2px dashed #5a2a96; /* A darker shade of purple for the dashed border */
+    /* Optional: Add a subtle background change if needed, but border might be enough */
+    /* background-color: #f2e8ff; */
+}
+
 /* Specific style for Turing's played cards in summary */
 .display-card.turing-summary-card {
     background-color: #d4eaff; /* Light blue, similar to hand but distinct */
@@ -248,4 +255,87 @@ button:disabled { background-color: #cccccc; cursor: not-allowed; }
 .scherbius-observed-info .display-card-container,
 .summary-battle-report .display-card-container {
     justify-content: flex-start; /* Align cards to the start of their container */
+}
+
+/* --- Historical Round View Styling --- */
+#historicalRoundViewArea {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #c0c0c0;
+    background-color: #f9f9f9;
+    border-radius: 6px; /* Consistent with other boxes */
+}
+
+#historicalRoundViewArea h3 { /* Match other h3 */
+    color: #333; 
+    margin-top: 0; 
+    margin-bottom: 0.8em;
+}
+
+.history-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px; /* Increased margin */
+    padding-bottom: 10px; /* Added padding */
+    border-bottom: 1px solid #e0e0e0; /* Separator line */
+}
+
+#historicalRoundIndicator {
+    font-weight: bold;
+    font-size: 0.95em; /* Slightly adjusted size */
+    color: #0056b3; /* Theme color */
+}
+
+#historicalRoundContent p#historicalRoundInfo { /* Specificity for the info paragraph */
+    font-size: 0.9em;
+    margin-bottom: 10px; /* Spacing before battle details */
+    background-color: #e9ecef; /* Light background for info */
+    padding: 8px; /* Padding for info */
+    border-radius: 4px; /* Rounded corners for info */
+}
+
+/* Adjustments for battle reports within history to ensure consistency */
+#historicalRoundBattles .summary-battle-report {
+    /* Styles are inherited, but if specific overrides are needed, they go here */
+    /* e.g., width: calc(50% - 24px); if you want two per row */
+}
+
+/* Styling for rewards available in historical view */
+.rewards-available-info {
+    font-size: 0.85em;
+    margin-top: 8px;
+    padding-top: 5px;
+    border-top: 1px dashed #ddd;
+    color: #555;
+}
+.rewards-available-info .display-card-container {
+    margin-top: 2px;
+}
+
+/* --- Styling for Historical Items in Main Display --- */
+.historical-battle-item {
+    background-color: #f0f0f0; /* Slightly different background for past battles */
+    border: 1px solid #dcdcdc;
+}
+
+.static-played-cards-area {
+    padding: 5px;
+    margin-top: 10px;
+    border-top: 1px dashed #ccc;
+}
+.static-played-cards-area h4 {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+/* Ensure general .battle-item styling doesn't make historical items look interactive */
+.historical-battle-item .turing-played-cards-area,
+.historical-battle-item .scherbius-observed-info { /* Assuming scherbius-observed-info is reused for committed cards */
+    /* No interactive borders or backgrounds needed */
+}
+
+.historical-battle-item .card-slot { /* Historical views shouldn't show empty, dashed slots */
+    display: none; 
 }
