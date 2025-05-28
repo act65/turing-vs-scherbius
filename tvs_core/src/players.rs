@@ -3,9 +3,11 @@ use turing_vs_scherbius::{
     TuringAction, 
     Reward, 
     Cards, 
-    EncryptionCode,
+    // EncryptionCode, // EncryptionCode seems unused in this file
     utils
 };
+use rand::{rngs::StdRng, SeedableRng, Rng}; // Add imports
+
 
 fn get_strategy_from_hand(hand: &[u32], rewards: &[Reward], prompt: &str) -> Vec<Cards> {
     rewards.iter().map(|r| {
@@ -68,8 +70,14 @@ pub fn random_scherbius_player(
         ->ScherbiusAction{
 
     let mut hand = scherbius_hand.clone();
-    let strategy = utils::get_rnd_strategy(&mut hand, rewards.len());
-    let encrypt = utils::random_reencryption();
+    // Create a local RNG for now
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut rng = StdRng::from_rng(rand::thread_rng()).unwrap();
+    #[cfg(target_arch = "wasm32")]
+    let mut rng = StdRng::from_seed(rand::thread_rng().gen::<[u8; 32]>());
+
+    let strategy = utils::get_rnd_strategy(&mut hand, rewards.len(), &mut rng); // Pass rng
+    let encrypt = utils::random_reencryption(&mut rng); // Pass rng
 
     ScherbiusAction {
         strategy: strategy,
@@ -84,7 +92,13 @@ pub fn random_turing_player(
     ->TuringAction{
 
     let mut hand = turing_hand.clone();
-    let strategy = utils::get_rnd_strategy(&mut hand, rewards.len());
+    // Create a local RNG for now
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut rng = StdRng::from_rng(rand::thread_rng()).unwrap();
+    #[cfg(target_arch = "wasm32")]
+    let mut rng = StdRng::from_seed(rand::thread_rng().gen::<[u8; 32]>());
+
+    let strategy = utils::get_rnd_strategy(&mut hand, rewards.len(), &mut rng); // Pass rng
 
     TuringAction {
         strategy: strategy,

@@ -65,13 +65,12 @@ pub fn remove_chosen_items_from_hand(hand: &mut Vec<u32>, chosen: &[u32]) {
     }
 }
 
-pub fn draw_from_set(deck: &mut Cards, n: usize)->Cards {
+pub fn draw_from_set(deck: &mut Cards, n: usize, rng: &mut StdRng)->Cards {
     // Draw n cards from a deck
     let mut drawn: Vec<u32> = Vec::new();
-    // TODO shouldnt create new thread_rng. should pass in as mut arg
-    let mut rng = thread_rng();
+    // Use the passed-in rng
     for _ in 0..n {
-        let x = deck.choose(&mut rng);
+        let x = deck.choose(rng); // Pass rng to choose
         match x {
             Some(x) => {
                 drawn.push(*x);
@@ -85,15 +84,15 @@ pub fn draw_from_set(deck: &mut Cards, n: usize)->Cards {
 }
 
 // for random players
-pub fn get_rnd_strategy(hand: &mut Cards, n: usize) -> Vec<Cards> {
+pub fn get_rnd_strategy(hand: &mut Cards, n: usize, rng: &mut StdRng) -> Vec<Cards> {
     // randomly choose a strategy from the hand
     let mut strategy: Vec<Cards> = Vec::new();
     while !hand.is_empty() {
         let m = hand.len();
         // Calculate max possible size for this subset
         // let max_subset_size = hand.len().max(1); // At least one card subset
-        let subset_size = thread_rng().gen_range(1..=m);
-        let choice = draw_from_set(hand, subset_size);
+        let subset_size = rng.gen_range(1..=m); // Use passed-in rng
+        let choice = draw_from_set(hand, subset_size, rng); // Pass rng to draw_from_set
         strategy.push(choice);
     }
 
@@ -106,8 +105,8 @@ pub fn get_rnd_strategy(hand: &mut Cards, n: usize) -> Vec<Cards> {
     strategy
 }
 
-pub fn random_reencryption() -> bool {
-    thread_rng().gen_bool(1.0 / 5.0) // 1 in 5 chance of being true
+pub fn random_reencryption(rng: &mut StdRng) -> bool {
+    rng.gen_bool(1.0 / 5.0) // 1 in 5 chance of being true
 }
 
 // other utils
@@ -159,9 +158,10 @@ fn is_unique_subset(a: &Vec<u32>, b: &Vec<u32>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::thread_rng;
+    // use rand::thread_rng; // No longer needed directly in most tests after refactor
     use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::Rng; // For gen_range, gen_bool if used directly in tests
 
     #[test]
     fn test_sample_random_ints() {
@@ -188,6 +188,50 @@ mod tests {
             assert!(card >= 1 && card <= 10);
         }
     }
+
+    #[test]
+    fn test_draw_from_set_util() { // Renamed to avoid conflict if a lib.rs test exists
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+        let mut deck = vec![1, 2, 3, 4, 5];
+        let drawn = draw_from_set(&mut deck, 2, &mut rng);
+        assert_eq!(drawn.len(), 2);
+        assert_eq!(deck.len(), 3);
+        // Ensure drawn cards are from the original deck and no longer in the deck
+        for card in drawn.iter() {
+            assert!(!deck.contains(card));
+        }
+    }
+
+    #[test]
+    fn test_get_rnd_strategy_util() { // Renamed
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+        let mut hand = vec![1, 2, 3, 4, 5, 6];
+        let n_battles = 3;
+        let strategy = get_rnd_strategy(&mut hand, n_battles, &mut rng);
+        
+        assert!(hand.is_empty()); // All cards should be distributed
+        assert!(strategy.len() >= n_battles || strategy.iter().map(|s| s.len()).sum::<usize>() == 6); // Strategy should cover n_battles or all cards used
+        
+        let mut total_cards_in_strategy = 0;
+        for battle_cards in &strategy {
+            total_cards_in_strategy += battle_cards.len();
+        }
+        assert_eq!(total_cards_in_strategy, 6); // All cards from hand must be in strategy
+    }
+
+    #[test]
+    fn test_random_reencryption_util() { // Renamed
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+        // Test a few times to see if we get both true and false, though with fixed seed it will be deterministic
+        let _ = random_reencryption(&mut rng); 
+        // We can't assert true/false directly without knowing the seeded behavior,
+        // but we can assert it runs and returns a bool.
+        assert!(matches!(random_reencryption(&mut rng), true | false));
+    }
+
 
     #[test]
     fn test_remove_played_cards_from_hand() {

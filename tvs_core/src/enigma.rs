@@ -44,6 +44,11 @@ impl EasyEnigma {
     pub fn set(&mut self, x: [u32; 2]) {
         self.rotor = x;
     }
+
+    #[cfg(test)]
+    pub fn get_rotors(&self) -> [u32; 2] {
+        self.rotor
+    }
 }
 
 // ... existing code ...

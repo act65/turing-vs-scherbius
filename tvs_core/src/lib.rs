@@ -3,14 +3,16 @@ use std::cmp::Ordering;
 use std::iter::zip;
 use rand::{
     Rng,
+    SeedableRng, // Ensure SeedableRng is imported
+    rngs::StdRng // Make StdRng available unconditionally
     // rngs::ThreadRng // No longer directly used in GameState::step
 };
 use std::sync::Arc;
 
-#[cfg(not(target_arch = "wasm32"))]
-use rand::rngs::StdRng;
-#[cfg(not(target_arch = "wasm32"))]
-use rand::SeedableRng;
+// #[cfg(not(target_arch = "wasm32"))] // No longer needed, StdRng imported above
+// use rand::rngs::StdRng;
+// #[cfg(not(target_arch = "wasm32"))] // No longer needed, SeedableRng imported above
+// use rand::SeedableRng;
 
 // For wasm32, StdRng might not be available or ideal.
 // Consider using a wasm-friendly RNG if targeting wasm32 primarily for GameState's internal RNG.
@@ -71,14 +73,16 @@ struct GameState {
 }
 
 impl GameState {
-    pub fn new(game_config: Arc<GameConfig>) -> GameState {
-        // On wasm32, StdRng::from_rng might not be ideal.
-        // rand::thread_rng() is the standard wasm approach.
-        // For consistency, one might use a specific seed source or a simpler RNG for wasm.
-        #[cfg(not(target_arch = "wasm32"))]
-        let mut rng = StdRng::from_rng(rand::thread_rng()).unwrap();
-        #[cfg(target_arch = "wasm32")]
-        let mut rng = StdRng::from_seed(rand::thread_rng().gen::<[u8; 32]>()); // Example for wasm
+    pub fn new(game_config: Arc<GameConfig>, seed: Option<u64>) -> GameState {
+        let mut rng = match seed {
+            Some(s) => StdRng::seed_from_u64(s),
+            None => {
+                #[cfg(not(target_arch = "wasm32"))]
+                { StdRng::from_rng(rand::thread_rng()).unwrap() }
+                #[cfg(target_arch = "wasm32")]
+                { StdRng::from_seed(rand::thread_rng().gen::<[u8; 32]>()) }
+            }
+        };
 
         let rewards = random_rewards(
             game_config.n_battles,
@@ -271,7 +275,7 @@ fn battle_result(
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)] // Added PartialEq
 pub enum Reward {
     VictoryPoints(u32),
     NewCards(Vec<u32>),
@@ -407,7 +411,8 @@ struct PyGameState {
 #[pymethods]
 impl PyGameState {
     #[new]
-    pub fn new(config: Py<PyGameConfig>, py: Python) -> PyResult<Self> {
+    // Removed #[args(seed = "None")] to rely on default Option<u64> handling
+    pub fn new(config: Py<PyGameConfig>, seed: Option<u64>, py: Python) -> PyResult<Self> {
         // Borrow PyGameConfig from Python to access its fields
         let config_ref = config.borrow(py);
 
@@ -428,7 +433,7 @@ impl PyGameState {
             max_cards_per_battle: config_ref.max_cards_per_battle, // New
         });
 
-        let game_state = GameState::new(game_config);
+        let game_state = GameState::new(game_config, seed); // Pass the received seed here
         Ok(PyGameState { inner: game_state })
     }
 
@@ -547,7 +552,7 @@ mod tests {
     #[test]
     fn test_game_initialization() {
         let config = create_test_config(3, 10, 5); // n_battles=3, max_hand=10, max_cards_battle=5
-        let game = GameState::new(Arc::clone(&config));
+        let game = GameState::new(Arc::clone(&config), None); // Pass None for seed
 
         assert_eq!(game.turing_points, 0);
         assert_eq!(game.scherbius_points, 0);
@@ -631,7 +636,7 @@ mod tests {
         let config = create_test_config(n_battles, max_hand_size, max_cards_per_battle);
         config.clone(); // To avoid unused warning if not used below, though it is.
 
-        let mut game = GameState::new(Arc::clone(&config)); // Starts with 5 cards each, deal 2
+        let mut game = GameState::new(Arc::clone(&config), None); // Pass None for seed
         // Initial hands (5 cards) will be truncated after first step if no cards played.
         // Let's set hands manually to test truncation after rewards/dealing.
         game.scherbius_hand = vec![1,2,3,4,5];
@@ -663,7 +668,7 @@ mod tests {
         let max_cards_per_battle = 2; // Max 2 cards for a battle
         let config = create_test_config(n_battles, max_hand_size, max_cards_per_battle);
 
-        let mut game = GameState::new(Arc::clone(&config));
+        let mut game = GameState::new(Arc::clone(&config), None); // Pass None for seed
         game.scherbius_hand = vec![1,2,3,4,5];
         game.turing_hand = vec![1,2,3,4,5];
 
@@ -686,7 +691,7 @@ mod tests {
     #[test]
     fn test_encryption_cost() {
         let config = create_test_config(1, 5, 2);
-        let mut game = GameState::new(Arc::clone(&config));
+        let mut game = GameState::new(Arc::clone(&config), None); // Pass None for seed
         game.scherbius_points = 5; // Enough points to pay for encryption (cost 3)
         game.scherbius_hand = vec![1,2,3]; // Ensure valid hand for strategy
         game.turing_hand = vec![1,2,3];   // Ensure valid hand for strategy
@@ -711,7 +716,7 @@ mod tests {
     fn test_strategy_must_cover_all_battles() {
         let n_battles = 2; // Game expects 2 battles
         let config = create_test_config(n_battles, 5, 2);
-        let game = GameState::new(Arc::clone(&config));
+        let game = GameState::new(Arc::clone(&config), None); // Pass None for seed
 
         // Action with only 1 battle strategy
         let scherbius_action_not_enough_battles = ScherbiusAction {
@@ -724,5 +729,83 @@ mod tests {
         );
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Strategy must cover all battles"));
+    }
+
+    #[test]
+    fn test_same_seed_produces_identical_gamestate() {
+        let config = create_test_config(3, 10, 5); // Using existing helper
+        let seed = Some(12345u64);
+
+        let game1 = GameState::new(Arc::clone(&config), seed);
+        let game2 = GameState::new(Arc::clone(&config), seed);
+
+        assert_eq!(game1.turing_hand, game2.turing_hand, "Turing hands should be identical");
+        assert_eq!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should be identical");
+        
+        // Compare rewards (Reward now derives PartialEq)
+        assert_eq!(game1.rewards, game2.rewards, "Rewards lists should be identical");
+        
+        // Compare encoder state (using get_rotors())
+        assert_eq!(game1.encoder.get_rotors(), game2.encoder.get_rotors(), "Enigma rotors should be identical");
+        // Also check step if it's relevant for initial state (it is [0,0], so should be same)
+        // However, step is not public. If rotor is same, and new() logic is deterministic, this is good coverage.
+
+        assert_eq!(game1.encryption, game2.encryption, "Initial encryption codes should be identical");
+    }
+
+    #[test]
+    fn test_different_seeds_produce_different_gamestates() {
+        let config = create_test_config(3, 10, 5);
+        let seed1 = Some(101u64);
+        let seed2 = Some(102u64); // Different seed
+
+        assert_ne!(seed1, seed2, "Seeds must be different for this test");
+
+        let game1 = GameState::new(Arc::clone(&config), seed1);
+        let game2 = GameState::new(Arc::clone(&config), seed2);
+
+        // It's theoretically possible these are the same, but highly improbable for simple game init.
+        assert_ne!(game1.turing_hand, game2.turing_hand, "Turing hands should differ (highly probable)");
+        assert_ne!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should differ (highly probable)");
+
+        // Compare rewards
+        if game1.rewards.len() == game2.rewards.len() {
+            // This relies on Reward deriving PartialEq
+            let rewards_match = game1.rewards.iter().zip(game2.rewards.iter()).all(|(r1, r2)| r1 == r2);
+            assert!(!rewards_match, "Rewards lists should differ (highly probable)");
+        } else {
+            // If lengths somehow differ (they shouldn't with same config), that's a difference.
+            // No assertion needed here as different lengths imply non-equality.
+        }
+        
+        assert_ne!(game1.encoder.get_rotors(), game2.encoder.get_rotors(), "Enigma rotors should differ (highly probable)");
+        assert_ne!(game1.encryption, game2.encryption, "Initial encryption codes should differ (highly probable)");
+    }
+
+    #[test]
+    fn test_none_seed_initializes_gamestate() {
+        let config = create_test_config(3, 10, 5);
+        let game = GameState::new(Arc::clone(&config), None); // No seed
+
+        // Basic sanity checks for a valid game state
+        assert_eq!(game.turing_hand.len(), config.turing_starting as usize, "Turing hand size mismatch");
+        assert_eq!(game.scherbius_hand.len(), config.scherbius_starting as usize, "Scherbius hand size mismatch");
+        assert_eq!(game.rewards.len(), config.n_battles as usize, "Rewards count mismatch");
+        
+        // Check points are zero and no winner
+        assert_eq!(game.turing_points, 0, "Initial Turing points should be 0");
+        assert_eq!(game.scherbius_points, 0, "Initial Scherbius points should be 0");
+        assert_eq!(game.winner, Actor::Null, "Initial winner should be Null");
+
+        // Check encoder is initialized (rotor values are within vocab_size)
+        let rotors = game.encoder.get_rotors();
+        assert!(rotors[0] < config.encryption_vocab_size && rotors[0] >= 1, "Encoder rotor0 out of expected range");
+        assert!(rotors[1] < config.encryption_vocab_size && rotors[1] >= 1, "Encoder rotor1 out of expected range");
+        
+        // Check encryption code is initialized
+        assert_eq!(game.encryption.len(), config.encryption_code_len as usize, "Encryption code length mismatch");
+        for val in &game.encryption {
+            assert!(*val < config.encryption_vocab_size && *val >=1, "Encryption code value out of expected range");
+        }
     }
 }
