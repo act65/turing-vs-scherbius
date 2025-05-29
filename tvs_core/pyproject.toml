@@ -3,13 +3,13 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "turing-vs-scherbius"
+name = "tvs_core"  # Changed
 version = "0.1.0"
-description = "A game based on the Turing vs Scherbius historical cryptographic conflict"
+description = "Core game logic for Turing vs Scherbius" # More specific description
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
-readme = "README.md"
+# readme = "README.md" # Optional: if tvs_core/README.md exists
 license = {text = "MIT"}
 requires-python = ">=3.7"
 classifiers = [
@@ -17,18 +17,13 @@ classifiers = [
     "Programming Language :: Rust",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: Games/Entertainment :: Simulation",
 ]
-
-# Python dependencies (if any)
-dependencies = [
-    # e.g., "numpy>=1.20.0"
-]
-
-[project.urls]
-"Homepage" = "https://github.com/yourusername/turing-vs-scherbius"
-"Bug Tracker" = "https://github.com/yourusername/turing-vs-scherbius/issues"
 
 [tool.maturin]
-python-source = "python"  # If you have Python modules
 bindings = "pyo3"
+# If your Rust lib name in Cargo.toml is, for example, "tvs_game_engine",
+# and you want the Python module to be `tvs_core`, add:
+# module-name = "tvs_core"
+# Or, better, ensure your [lib] in Cargo.toml has name = "tvs_core"
+# For PyO3, you often also need:
+features = ["pyo3/extension-module"]

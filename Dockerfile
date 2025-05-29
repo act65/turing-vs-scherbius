@@ -21,10 +21,10 @@ COPY tvs_core /app/tvs_core
 COPY tvs_flask /app/tvs_flask
 
 # Install build dependencies for maturin and the Rust project
-RUN pip install maturin wheel
+RUN pip install maturin wheel pytest
 
 # Install the tvs_core Rust project as a Python package
-RUN cd /app/tvs_core && maturin build --release && pip install target/wheels/*
+RUN cd /app/tvs_core && make
 
 # Install Flask
 RUN pip install Flask
