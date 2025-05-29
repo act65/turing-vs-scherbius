@@ -72,6 +72,27 @@ struct GameState {
     game_config: Arc<GameConfig>,
 }
 
+
+// Add a new struct to hold detailed battle results
+#[pyclass] // MAKE THIS A PYCLASS
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BattleOutcomeDetail {
+    #[pyo3(get)] // Expose fields to Python
+    turing_sum: u32,
+    #[pyo3(get)]
+    scherbius_sum: u32,
+    #[pyo3(get)]
+    turing_cards_won: Vec<u32>,
+    #[pyo3(get)]
+    turing_vp_won: u32,
+}
+
+#[pymethods] // Add pymethods if you need to create it from Python (optional for now)
+impl BattleOutcomeDetail {
+    // No #[new] needed if it's only created in Rust and passed to Python
+}
+
+
 impl GameState {
     pub fn new(game_config: Arc<GameConfig>, seed: Option<u64>) -> GameState {
         let mut rng = match seed {
@@ -143,103 +164,99 @@ impl GameState {
         Ok(())
     }
 
-
-    fn step(
+        fn step(
         &mut self,
         scherbius_action: &ScherbiusAction,
-        turing_action: &TuringAction)  -> Result<(), String> {
+        turing_action: &TuringAction,
+    ) -> Result<Vec<BattleOutcomeDetail>, String> { // Return type is fine
 
-        // Check that the actions are valid
         self.check_action_validity(&Action::ScherbiusAction(scherbius_action.clone()), &self.scherbius_hand)?;
         self.check_action_validity(&Action::TuringAction(turing_action.clone()), &self.turing_hand)?;
 
-        // Remove cards played from hands
         utils::remove_played_cards_from_hand(&mut self.scherbius_hand, &scherbius_action.strategy);
         utils::remove_played_cards_from_hand(&mut self.turing_hand, &turing_action.strategy);
 
-        // Resolve battles
-        let battle_outcomes: Vec<Option<Actor>> = zip(
-            scherbius_action.strategy.iter(),
-            turing_action.strategy.iter())
-                .map(|(s_cards, t_cards)|battle_result(s_cards, t_cards))
-                .collect();
+        let mut detailed_outcomes: Vec<BattleOutcomeDetail> = Vec::new();
 
-        // Distribute the rewards
-        for (outcome_option, reward) in zip(battle_outcomes, &self.rewards) {
-            if let Some(winner) = outcome_option { // Only distribute reward if there's a winner
+        for (i, (s_cards, t_cards)) in zip(
+            scherbius_action.strategy.iter(),
+            turing_action.strategy.iter(),
+        ).enumerate() {
+            let t_sum = t_cards.iter().sum::<u32>();
+            let s_sum = s_cards.iter().sum::<u32>();
+            let winner_option = battle_result(s_cards, t_cards);
+
+            let mut turing_cards_won_in_battle = Vec::new();
+            let mut turing_vp_won_in_battle = 0;
+
+            if let Some(winner) = winner_option {
+                let reward_for_battle = &self.rewards[i];
                 match winner {
                     Actor::Turing => {
-                        match reward {
-                            Reward::VictoryPoints(v) => self.turing_points += v,
-                            Reward::NewCards(cards) => self.turing_hand.extend_from_slice(&cards),
-                            Reward::Null => ()
+                        match reward_for_battle {
+                            Reward::VictoryPoints(v) => {
+                                self.turing_points += v;
+                                turing_vp_won_in_battle = *v;
+                            }
+                            Reward::NewCards(cards) => {
+                                self.turing_hand.extend_from_slice(&cards);
+                                turing_cards_won_in_battle = cards.clone();
+                            }
+                            Reward::Null => (),
                         }
-                    },
+                    }
                     Actor::Scherbius => {
-                        match reward {
+                        match reward_for_battle {
                             Reward::VictoryPoints(v) => self.scherbius_points += v,
                             Reward::NewCards(cards) => self.scherbius_hand.extend_from_slice(&cards),
-                            Reward::Null => ()
+                            Reward::Null => (),
                         }
-                    },
-                    Actor::Null => () // This case should not be reached if outcome_option is Some.
+                    }
+                    Actor::Null => (),
                 }
             }
-            // If outcome_option is None (draw), the reward for this battle is not given.
+            detailed_outcomes.push(BattleOutcomeDetail { // This is fine, creating Rust struct
+                turing_sum: t_sum,
+                scherbius_sum: s_sum,
+                turing_cards_won: turing_cards_won_in_battle,
+                turing_vp_won: turing_vp_won_in_battle,
+            });
         }
 
-        // Scherbius re-encryption logic
+
         if scherbius_action.encryption {
             if self.scherbius_points >= self.game_config.encryption_cost {
                 self.scherbius_points -= self.game_config.encryption_cost;
-                // Assuming encryption_vocab_size is the range for enigma rotor values
-                // The original code used hardcoded 0..10. Let's use encryption_vocab_size.
-                // enigma::EasyEnigma::set might need adjustment if it expects a fixed size array.
-                // For now, assuming it can take dynamically generated values based on vocab_size.
-                // If EasyEnigma always uses 2 rotors with values up to vocab_size-1:
                 let val1 = self.rng.gen_range(0..self.game_config.encryption_vocab_size);
                 let val2 = self.rng.gen_range(0..self.game_config.encryption_vocab_size);
-                // This part depends on how `encoder.set` is defined.
-                // If it takes `[u32; 2]`, then:
-                self.encoder.set([val1, val2]); // Using self.rng for determinism
+                self.encoder.set([val1, val2]);
                 self.encoder.reset();
-            } else {
-                // Optional: Log or handle insufficient points for encryption?
-                // For now, if Scherbius can't pay, encryption doesn't happen.
             }
         }
 
-        // Check if a player has won
         if self.scherbius_points >= self.game_config.victory_points {
             self.winner = Actor::Scherbius;
         } else if self.turing_points >= self.game_config.victory_points {
             self.winner = Actor::Turing;
         }
 
-        // If game is over, no need to deal cards or generate new rewards
         if self.winner != Actor::Null {
-            return Ok(());
+            return Ok(detailed_outcomes);
         }
 
-        // Generate rewards for the next round
         let next_rewards = random_rewards(
             self.game_config.n_battles,
             self.game_config.max_vp,
             self.game_config.max_draw,
-            &mut self.rng);
+            &mut self.rng,
+        );
         self.rewards = next_rewards;
 
-        // Each player gets some new cards
         let scherbius_new_cards = utils::draw_cards(self.game_config.scherbius_deal, &mut self.rng);
         self.scherbius_hand.extend_from_slice(&scherbius_new_cards);
         let turing_new_cards = utils::draw_cards(self.game_config.turing_deal, &mut self.rng);
         self.turing_hand.extend_from_slice(&turing_new_cards);
 
-        // Clip hands to max_hand_size
-        // Note: If players should choose which cards to discard, this logic would be more complex.
-        // Simple truncation discards the most recently added cards if over limit.
-        // Sorting and then truncating might be another option (e.g., discard lowest value cards).
-        // For now, simple truncation:
         if self.scherbius_hand.len() > self.game_config.max_hand_size as usize {
             self.scherbius_hand.truncate(self.game_config.max_hand_size as usize);
         }
@@ -247,7 +264,7 @@ impl GameState {
             self.turing_hand.truncate(self.game_config.max_hand_size as usize);
         }
 
-        Ok(())
+        Ok(detailed_outcomes)
     }
 }
 
@@ -406,16 +423,17 @@ impl PyGameConfig {
 #[pyclass]
 struct PyGameState {
     inner: GameState,
+    // This field will now store Py<BattleOutcomeDetail> or similar if you want Python objects directly.
+    // Or, keep it as Vec<BattleOutcomeDetail> and convert on the fly in battle_results.
+    // Keeping as Vec<BattleOutcomeDetail> is simpler for Rust-internal storage.
+    last_battle_outcomes: Vec<BattleOutcomeDetail>,
 }
 
 #[pymethods]
 impl PyGameState {
     #[new]
-    // Removed #[args(seed = "None")] to rely on default Option<u64> handling
     pub fn new(config: Py<PyGameConfig>, seed: Option<u64>, py: Python) -> PyResult<Self> {
-        // Borrow PyGameConfig from Python to access its fields
         let config_ref = config.borrow(py);
-
         let game_config = Arc::new(GameConfig {
             scherbius_starting: config_ref.scherbius_starting,
             scherbius_deal: config_ref.scherbius_deal,
@@ -429,28 +447,54 @@ impl PyGameState {
             verbose: config_ref.verbose,
             max_vp: config_ref.max_vp,
             max_draw: config_ref.max_draw,
-            max_hand_size: config_ref.max_hand_size, // New
-            max_cards_per_battle: config_ref.max_cards_per_battle, // New
+            max_hand_size: config_ref.max_hand_size,
+            max_cards_per_battle: config_ref.max_cards_per_battle,
         });
 
-        let game_state = GameState::new(game_config, seed); // Pass the received seed here
-        Ok(PyGameState { inner: game_state })
+        let game_state = GameState::new(game_config, seed);
+        Ok(PyGameState {
+            inner: game_state,
+            last_battle_outcomes: Vec::new(),
+        })
     }
 
-    pub fn step(&mut self,
+    pub fn step(
+        &mut self,
         turing_strategy: Vec<Cards>,
         scherbius_strategy: Vec<Cards>,
-        reencrypt: bool) -> PyResult<()> {
-
+        reencrypt: bool,
+    ) -> PyResult<()> {
         match self.inner.step(
-            &ScherbiusAction { strategy: scherbius_strategy, encryption: reencrypt },
-            &TuringAction { strategy: turing_strategy}
+            &ScherbiusAction {
+                strategy: scherbius_strategy,
+                encryption: reencrypt,
+            },
+            &TuringAction {
+                strategy: turing_strategy,
+            },
         ) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(e))
+            Ok(outcomes) => {
+                self.last_battle_outcomes = outcomes;
+                Ok(())
+            }
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(e)),
         }
     }
 
+    // New method to expose the battle results
+    // Returns a Python list of BattleOutcomeDetail objects
+    pub fn battle_results(&self, py: Python) -> PyResult<Vec<Py<BattleOutcomeDetail>>> {
+        // The `py: Python` argument gives us the GIL token.
+        let mut py_outcomes = Vec::new();
+        for outcome_detail in &self.last_battle_outcomes {
+            // Create a Python instance of BattleOutcomeDetail
+            // Py::new takes a Python token and the Rust struct.
+            // The Rust struct BattleOutcomeDetail must be #[pyclass] for this to work.
+            let py_outcome_detail = Py::new(py, outcome_detail.clone())?;
+            py_outcomes.push(py_outcome_detail);
+        }
+        Ok(py_outcomes)
+    }
 
     pub fn is_won(&self) -> bool {
         self.inner.winner != Actor::Null
@@ -525,9 +569,9 @@ fn turing_vs_scherbius(_py: Python, m: &PyModule) -> PyResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
-    use std::sync::Arc;
+    // use rand::rngs::StdRng; // Already imported at top level
+    // use rand::SeedableRng; // Already imported at top level
+    // use std::sync::Arc; // Already imported at top level
 
     // Helper to create a default config for tests
     fn create_test_config(n_battles: u32, max_hand_size: u32, max_cards_per_battle: u32) -> Arc<GameConfig> {
@@ -537,22 +581,22 @@ mod tests {
             scherbius_deal: 2,
             turing_deal: 2,
             victory_points: 10,
-            n_battles, // Parameterized
+            n_battles, 
             encryption_cost: 3,
-            encryption_code_len: 2, // Corresponds to GameState.encryption, which seems unused
-            encryption_vocab_size: 10, // Used for EasyEnigma
+            encryption_code_len: 2, 
+            encryption_vocab_size: 10, 
             max_vp: 3,
             max_draw: 3,
             verbose: false,
-            max_hand_size, // Parameterized
-            max_cards_per_battle, // Parameterized
+            max_hand_size, 
+            max_cards_per_battle, 
         })
     }
 
     #[test]
     fn test_game_initialization() {
-        let config = create_test_config(3, 10, 5); // n_battles=3, max_hand=10, max_cards_battle=5
-        let game = GameState::new(Arc::clone(&config), None); // Pass None for seed
+        let config = create_test_config(3, 10, 5); 
+        let game = GameState::new(Arc::clone(&config), None); 
 
         assert_eq!(game.turing_points, 0);
         assert_eq!(game.scherbius_points, 0);
@@ -565,98 +609,85 @@ mod tests {
     }
 
     #[test]
-    fn test_battle_result_logic() { // Renamed for clarity
-        assert_eq!(battle_result(&vec![1, 2], &vec![3, 2]), Some(Actor::Turing)); // T wins
-        assert_eq!(battle_result(&vec![5, 4], &vec![3, 2]), Some(Actor::Scherbius)); // S wins
-        assert_eq!(battle_result(&vec![2, 3], &vec![3, 2]), None); // Draw
+    fn test_battle_result_logic() { 
+        assert_eq!(battle_result(&vec![1, 2], &vec![3, 2]), Some(Actor::Turing)); 
+        assert_eq!(battle_result(&vec![5, 4], &vec![3, 2]), Some(Actor::Scherbius)); 
+        assert_eq!(battle_result(&vec![2, 3], &vec![3, 2]), None); 
     }
 
     #[test]
-    fn test_game_step_basic_flow() { // Renamed for clarity
+    fn test_game_step_basic_flow_and_outcomes() { // Updated test name
         let n_battles = 2;
         let max_hand_size = 7;
         let max_cards_per_battle = 3;
         let config = create_test_config(n_battles, max_hand_size, max_cards_per_battle);
 
-        let seed = [0u8; 32]; // For deterministic RNG
+        let seed = [0u8; 32]; 
         let mut rng = StdRng::from_seed(seed);
 
         let mut game = GameState {
-            turing_hand: vec![1, 2, 3, 4, 5, 6], // 6 cards
-            scherbius_hand: vec![10, 20, 30, 40, 50, 60], // 6 cards
-            encryption: vec![1, 2], // Unused field, but part of struct
+            turing_hand: vec![1, 2, 3, 4, 5, 6], 
+            scherbius_hand: vec![10, 20, 30, 40, 50, 60], 
+            encryption: vec![1, 2], 
             turing_points: 0,
             scherbius_points: 0,
-            encoder: enigma::EasyEnigma::new(config.encryption_vocab_size, &mut rng.clone()), // Clone rng for encoder setup
+            encoder: enigma::EasyEnigma::new(config.encryption_vocab_size, &mut rng.clone()), 
             winner: Actor::Null,
-            rng, // Game uses this rng instance
-            rewards: vec![Reward::VictoryPoints(2), Reward::NewCards(vec![100, 101])], // 2 rewards for 2 battles
+            rng, 
+            rewards: vec![Reward::VictoryPoints(2), Reward::NewCards(vec![100, 101])], 
             game_config: Arc::clone(&config),
         };
 
-        // Scherbius: plays [10], [20,30]. Sums: 10, 50. Hand after play: [40,50,60]
-        // Turing: plays [1,2], [3]. Sums: 3, 3. Hand after play: [4,5,6]
         let scherbius_action = ScherbiusAction {
-            strategy: vec![vec![10], vec![20, 30]], // Valid: 2 battles, cards per battle <= 3
+            strategy: vec![vec![10], vec![20, 30]], 
             encryption: false,
         };
         let turing_action = TuringAction {
-            strategy: vec![vec![1, 2], vec![3]], // Valid: 2 battles, cards per battle <= 3
+            strategy: vec![vec![1, 2], vec![3]], 
         };
 
         let step_result = game.step(&scherbius_action, &turing_action);
-        assert!(step_result.is_ok(), "Step failed: {:?}", step_result.err());
+        assert!(step_result.is_ok(), "Step failed: {:?}", step_result.as_ref().err());
+        let outcomes = step_result.unwrap();
 
-        // Battle 1: S(10) vs T(3). Scherbius wins. S gets 2 VP. scherbius_points = 2.
+        assert_eq!(outcomes.len(), 2);
+        // Battle 1: S(10) vs T(3). Scherbius wins. S gets 2 VP.
+        assert_eq!(outcomes[0].scherbius_sum, 10);
+        assert_eq!(outcomes[0].turing_sum, 3);
+        assert_eq!(outcomes[0].turing_vp_won, 0);
+        assert_eq!(outcomes[0].turing_cards_won.len(), 0);
+
         // Battle 2: S(50) vs T(3). Scherbius wins. S gets cards [100, 101].
-        // Scherbius hand: [40,50,60] + [100,101] = [40,50,60,100,101] (5 cards)
-        // Turing hand: [4,5,6] (3 cards)
+        assert_eq!(outcomes[1].scherbius_sum, 50);
+        assert_eq!(outcomes[1].turing_sum, 3);
+        assert_eq!(outcomes[1].turing_vp_won, 0);
+        assert_eq!(outcomes[1].turing_cards_won.len(), 0); // Scherbius won cards, not Turing
 
         assert_eq!(game.scherbius_points, 2, "Scherbius points mismatch");
         assert_eq!(game.turing_points, 0, "Turing points mismatch");
 
-        // Cards dealt: scherbius_deal=2, turing_deal=2
-        // Scherbius hand before truncation: 5 + 2 = 7 cards. Max hand size is 7. No truncation.
-        // Turing hand before truncation: 3 + 2 = 5 cards. Max hand size is 7. No truncation.
-        // Lengths depend on utils::draw_cards, which is opaque here.
-        // We check that the length is AT MOST max_hand_size.
         assert!(game.scherbius_hand.len() <= max_hand_size as usize, "Scherbius hand size exceeds max");
         assert!(game.turing_hand.len() <= max_hand_size as usize, "Turing hand size exceeds max");
-
-        // Example of hand after dealing (assuming draw_cards returns [77,88] for S, [99,111] for T)
-        // S_hand: [40,50,60,100,101,S_deal1,S_deal2] -> len 7.
-        // T_hand: [4,5,6,T_deal1,T_deal2] -> len 5.
     }
 
     #[test]
     fn test_max_hand_size_truncation() {
         let n_battles = 1;
-        let max_hand_size = 3; // Small max hand size for testing truncation
+        let max_hand_size = 3; 
         let max_cards_per_battle = 1;
         let config = create_test_config(n_battles, max_hand_size, max_cards_per_battle);
-        config.clone(); // To avoid unused warning if not used below, though it is.
-
-        let mut game = GameState::new(Arc::clone(&config), None); // Pass None for seed
-        // Initial hands (5 cards) will be truncated after first step if no cards played.
-        // Let's set hands manually to test truncation after rewards/dealing.
+        
+        let mut game = GameState::new(Arc::clone(&config), None); 
         game.scherbius_hand = vec![1,2,3,4,5];
         game.turing_hand = vec![1,2,3,4,5];
-        game.rewards = vec![Reward::NewCards(vec![100, 101])]; // Turing wins this reward
+        game.rewards = vec![Reward::NewCards(vec![100, 101])]; 
 
-        let scherbius_action = ScherbiusAction { strategy: vec![vec![1]], encryption: false }; // S plays 1 card
-        let turing_action = TuringAction { strategy: vec![vec![2]] }; // T plays 1 card
-
-        // S hand after play: [2,3,4,5] (4 cards)
-        // T hand after play: [1,3,4,5] (4 cards)
-        // Battle: S(1) vs T(2). Turing wins. T gets [100, 101].
-        // T hand after reward: [1,3,4,5,100,101] (6 cards)
+        let scherbius_action = ScherbiusAction { strategy: vec![vec![1]], encryption: false }; 
+        let turing_action = TuringAction { strategy: vec![vec![2]] }; 
 
         let step_result = game.step(&scherbius_action, &turing_action);
         assert!(step_result.is_ok());
 
-        // After dealing (2 cards each from config.scherbius_deal/turing_deal):
-        // S hand: 4 + 2 = 6 cards. Expected truncation to 3.
-        // T hand: 6 + 2 = 8 cards. Expected truncation to 3.
         assert_eq!(game.scherbius_hand.len(), max_hand_size as usize, "Scherbius hand not truncated");
         assert_eq!(game.turing_hand.len(), max_hand_size as usize, "Turing hand not truncated");
     }
@@ -665,14 +696,13 @@ mod tests {
     fn test_max_cards_per_battle_validation() {
         let n_battles = 1;
         let max_hand_size = 5;
-        let max_cards_per_battle = 2; // Max 2 cards for a battle
+        let max_cards_per_battle = 2; 
         let config = create_test_config(n_battles, max_hand_size, max_cards_per_battle);
 
-        let mut game = GameState::new(Arc::clone(&config), None); // Pass None for seed
+        let mut game = GameState::new(Arc::clone(&config), None); 
         game.scherbius_hand = vec![1,2,3,4,5];
         game.turing_hand = vec![1,2,3,4,5];
 
-        // Valid action
         let valid_s_action = ScherbiusAction { strategy: vec![vec![1,2]], encryption: false };
         let valid_t_action = TuringAction { strategy: vec![vec![3,4]] };
         let result = game.check_action_validity(&Action::ScherbiusAction(valid_s_action.clone()), &game.scherbius_hand);
@@ -680,9 +710,7 @@ mod tests {
         let result = game.check_action_validity(&Action::TuringAction(valid_t_action.clone()), &game.turing_hand);
         assert!(result.is_ok());
 
-
-        // Invalid action: too many cards in one battle
-        let invalid_s_action = ScherbiusAction { strategy: vec![vec![1,2,3]], encryption: false }; // 3 cards > max 2
+        let invalid_s_action = ScherbiusAction { strategy: vec![vec![1,2,3]], encryption: false }; 
         let result = game.check_action_validity(&Action::ScherbiusAction(invalid_s_action), &game.scherbius_hand);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Too many cards committed"));
@@ -691,15 +719,15 @@ mod tests {
     #[test]
     fn test_encryption_cost() {
         let config = create_test_config(1, 5, 2);
-        let mut game = GameState::new(Arc::clone(&config), None); // Pass None for seed
-        game.scherbius_points = 5; // Enough points to pay for encryption (cost 3)
-        game.scherbius_hand = vec![1,2,3]; // Ensure valid hand for strategy
-        game.turing_hand = vec![1,2,3];   // Ensure valid hand for strategy
+        let mut game = GameState::new(Arc::clone(&config), None); 
+        game.scherbius_points = 5; 
+        game.scherbius_hand = vec![1,2,3]; 
+        game.turing_hand = vec![1,2,3];   
         game.rewards = vec![Reward::VictoryPoints(1)];
 
 
         let scherbius_action = ScherbiusAction { strategy: vec![vec![1]], encryption: true };
-        let turing_action = TuringAction { strategy: vec![vec![2]] }; // Turing wins, gets 1 VP
+        let turing_action = TuringAction { strategy: vec![vec![2]] }; 
 
         let initial_s_points = game.scherbius_points;
         let encryption_cost = game.game_config.encryption_cost;
@@ -707,20 +735,18 @@ mod tests {
         let step_result = game.step(&scherbius_action, &turing_action);
         assert!(step_result.is_ok());
 
-        // Scherbius should pay encryption_cost. Battle S(1) vs T(2), T wins. S gets 0 VP from battle.
         assert_eq!(game.scherbius_points, initial_s_points - encryption_cost);
-        assert_eq!(game.turing_points, 1); // Turing wins the battle reward
+        assert_eq!(game.turing_points, 1); 
     }
 
      #[test]
     fn test_strategy_must_cover_all_battles() {
-        let n_battles = 2; // Game expects 2 battles
+        let n_battles = 2; 
         let config = create_test_config(n_battles, 5, 2);
-        let game = GameState::new(Arc::clone(&config), None); // Pass None for seed
+        let game = GameState::new(Arc::clone(&config), None); 
 
-        // Action with only 1 battle strategy
         let scherbius_action_not_enough_battles = ScherbiusAction {
-            strategy: vec![vec![1]], // Only 1 battle, expected 2
+            strategy: vec![vec![1]], 
             encryption: false,
         };
         let result = game.check_action_validity(
@@ -733,7 +759,7 @@ mod tests {
 
     #[test]
     fn test_same_seed_produces_identical_gamestate() {
-        let config = create_test_config(3, 10, 5); // Using existing helper
+        let config = create_test_config(3, 10, 5); 
         let seed = Some(12345u64);
 
         let game1 = GameState::new(Arc::clone(&config), seed);
@@ -741,15 +767,8 @@ mod tests {
 
         assert_eq!(game1.turing_hand, game2.turing_hand, "Turing hands should be identical");
         assert_eq!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should be identical");
-        
-        // Compare rewards (Reward now derives PartialEq)
         assert_eq!(game1.rewards, game2.rewards, "Rewards lists should be identical");
-        
-        // Compare encoder state (using get_rotors())
         assert_eq!(game1.encoder.get_rotors(), game2.encoder.get_rotors(), "Enigma rotors should be identical");
-        // Also check step if it's relevant for initial state (it is [0,0], so should be same)
-        // However, step is not public. If rotor is same, and new() logic is deterministic, this is good coverage.
-
         assert_eq!(game1.encryption, game2.encryption, "Initial encryption codes should be identical");
     }
 
@@ -757,26 +776,20 @@ mod tests {
     fn test_different_seeds_produce_different_gamestates() {
         let config = create_test_config(3, 10, 5);
         let seed1 = Some(101u64);
-        let seed2 = Some(102u64); // Different seed
+        let seed2 = Some(102u64); 
 
         assert_ne!(seed1, seed2, "Seeds must be different for this test");
 
         let game1 = GameState::new(Arc::clone(&config), seed1);
         let game2 = GameState::new(Arc::clone(&config), seed2);
 
-        // It's theoretically possible these are the same, but highly improbable for simple game init.
         assert_ne!(game1.turing_hand, game2.turing_hand, "Turing hands should differ (highly probable)");
         assert_ne!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should differ (highly probable)");
 
-        // Compare rewards
         if game1.rewards.len() == game2.rewards.len() {
-            // This relies on Reward deriving PartialEq
             let rewards_match = game1.rewards.iter().zip(game2.rewards.iter()).all(|(r1, r2)| r1 == r2);
             assert!(!rewards_match, "Rewards lists should differ (highly probable)");
-        } else {
-            // If lengths somehow differ (they shouldn't with same config), that's a difference.
-            // No assertion needed here as different lengths imply non-equality.
-        }
+        } 
         
         assert_ne!(game1.encoder.get_rotors(), game2.encoder.get_rotors(), "Enigma rotors should differ (highly probable)");
         assert_ne!(game1.encryption, game2.encryption, "Initial encryption codes should differ (highly probable)");
@@ -785,24 +798,19 @@ mod tests {
     #[test]
     fn test_none_seed_initializes_gamestate() {
         let config = create_test_config(3, 10, 5);
-        let game = GameState::new(Arc::clone(&config), None); // No seed
+        let game = GameState::new(Arc::clone(&config), None); 
 
-        // Basic sanity checks for a valid game state
         assert_eq!(game.turing_hand.len(), config.turing_starting as usize, "Turing hand size mismatch");
         assert_eq!(game.scherbius_hand.len(), config.scherbius_starting as usize, "Scherbius hand size mismatch");
         assert_eq!(game.rewards.len(), config.n_battles as usize, "Rewards count mismatch");
-        
-        // Check points are zero and no winner
         assert_eq!(game.turing_points, 0, "Initial Turing points should be 0");
         assert_eq!(game.scherbius_points, 0, "Initial Scherbius points should be 0");
         assert_eq!(game.winner, Actor::Null, "Initial winner should be Null");
 
-        // Check encoder is initialized (rotor values are within vocab_size)
         let rotors = game.encoder.get_rotors();
         assert!(rotors[0] < config.encryption_vocab_size && rotors[0] >= 1, "Encoder rotor0 out of expected range");
         assert!(rotors[1] < config.encryption_vocab_size && rotors[1] >= 1, "Encoder rotor1 out of expected range");
         
-        // Check encryption code is initialized
         assert_eq!(game.encryption.len(), config.encryption_code_len as usize, "Encryption code length mismatch");
         for val in &game.encryption {
             assert!(*val < config.encryption_vocab_size && *val >=1, "Encryption code value out of expected range");

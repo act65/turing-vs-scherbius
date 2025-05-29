@@ -7,3 +7,7 @@ RL
 
 
 Site
+- fix sherbius card encryption. naming variables. and ensure we only ever see the encrypted version. (we dont actually need that visual queue - remove that feature)
+- remove 'Last Round Battle Results' section. unneeded now that we have history.
+- "Turing played: None" remove this, just leave it blank if Turing played nothing. Similar with Scherbius Committed: None
+- the result of the battles are missing in the history display.

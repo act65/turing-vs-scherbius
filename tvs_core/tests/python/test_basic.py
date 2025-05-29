@@ -75,6 +75,9 @@ def test_game_step():
 
     try:
         game.step(turing_strategy, scherbius_strategy, False)
+        # results = game.battle_results()
+        # print(results, results[0].turing_sum, results[0].turing_sum)
+        # raise ValueError()
     except ValueError as e:
         pytest.fail(f"game.step raised ValueError unexpectedly: {e}")
 

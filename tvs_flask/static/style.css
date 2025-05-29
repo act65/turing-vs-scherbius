@@ -5,7 +5,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; margin: 10px; backgroun
 h1, h2, h3 { color: #333; margin-top: 0.8em; margin-bottom: 0.4em; }
 h1 { text-align: center; color: #0056b3; }
 
-.game-controls, .scores-summary-box, #lastRoundSummaryArea, #battleZoneArea, #turingActionControls, #gameOverMessage {
+.game-controls, .scores-summary-box, #battleZoneArea, #turingActionControls, #gameOverMessage {
     margin-bottom: 15px; padding: 12px; border: 1px solid #d1d9e6; border-radius: 6px; background-color: #f8f9fa;
 }
 
@@ -17,50 +17,36 @@ h1 { text-align: center; color: #0056b3; }
 .scores-summary-box p { margin: 6px 0; font-size: 0.95em; }
 .scores-summary-box span { font-weight: bold; color: #343a40; }
 
-
-#lastRoundSummaryArea { background-color: #e6f7ff; }
-#lastRoundSummaryArea h3 { color: #0056b3; }
-#lastRoundEncryptionInfo { font-size: 0.9em; margin-bottom: 10px; font-style: italic; }
-
-/*
-   No longer need .card-source as #turingHand is styled directly
-.card-source {
-    display: flex; flex-wrap: wrap; min-height: 75px; padding: 8px;
-    border: 1px dashed #b0c4de; border-radius: 4px; background-color: #e9ecef; margin-top: 5px;
-}
-*/
-
 /* --- Hand Area Styling --- */
 #turingHand {
-    display: flex; /* This is key for horizontal layout of cards */
-    flex-wrap: wrap; /* Allows cards to wrap to the next line */
-    gap: 5px; /* Spacing between cards in hand */
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 5px; 
     padding: 10px;
-    border: 1px solid #007bff; /* Your original hand border */
+    border: 1px solid #007bff; 
     min-height: 80px; 
-    background-color: #dfefff; /* Your original hand background */
+    background-color: #dfefff; 
     margin-bottom:10px;
 }
 #turingHand.drag-over {
-    background-color: #d0eaff; /* Your original drag-over style */
+    background-color: #d0eaff; 
 }
 
 /* --- Card Slot Styling (for battle areas) --- */
-.turing-played-cards-area {
+.turing-played-cards-area { /* Container for slots in an active battle */
     display: flex; 
     gap: 5px; 
     padding: 5px;
-    /* border: 1px solid #ddd; /* You had this, but also on .interactive-battle-container .battle-item .turing-played-cards-area */
     min-height: 70px; 
     align-items: center; 
     flex-wrap: wrap; 
 }
 
 .card-slot {
-    width: 50px;  /* Fixed width for the slot itself */
-    height: 70px; /* Fixed height for the slot itself */
+    width: 50px;  
+    height: 70px; 
     border: 2px dashed #ccc; 
-    display: flex; /* To center the card if it's smaller, though card will be 100% */
+    display: flex; 
     justify-content: center;
     align-items: center;
     box-sizing: border-box; 
@@ -75,85 +61,89 @@ h1 { text-align: center; color: #0056b3; }
     border-color: #ff0000;
 }
 
-
 /* --- General Card Styling (applied to all cards) --- */
 .card {
     display: flex; 
     justify-content: center; 
     align-items: center;
-    padding: 8px; /* Keep padding if desired for content within card */
+    padding: 8px; 
     border-radius: 4px; 
     font-weight: bold; 
     font-size: 1.1em; 
     cursor: grab; 
     user-select: none; 
     box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-    box-sizing: border-box; /* Important! */
-    position: relative; /* From your original, keep if needed */
+    box-sizing: border-box; 
+    position: relative; 
 }
 
 /* --- Specific Styling for Cards in Hand --- */
-#turingHand > .card { /* ">" direct child combinator for specificity */
-    width: 48px; /* Fixed width for cards in hand */
-    height: 70px; /* Fixed height for cards in hand */
-    margin: 4px; /* Margins for cards in hand */
+#turingHand > .card { 
+    width: 48px; 
+    height: 70px; 
+    margin: 4px; 
     border: 1px solid #0056b3; 
     background-color: #cce7ff;
     color: #003d7a;
 }
 
 /* --- Specific Styling for Cards Inside Slots --- */
-.card-slot > .card { /* ">" direct child combinator */
-    width: 100%; /* Card fills the slot */
-    height: 100%; /* Card fills the slot */
-    margin: 0; /* No margin for cards in slots, they fill the slot */
-    border: 1px solid #333; /* Different border for slotted cards */
-    background-color: #fff; /* Different background for slotted cards */
-    color: #333; /* Different text color for slotted cards */
+.card-slot > .card { 
+    width: 100%; 
+    height: 100%; 
+    margin: 0; 
+    border: 1px solid #333; 
+    background-color: #fff; 
+    color: #333; 
 }
-
 
 .card.dragging { 
     opacity: 0.4; 
-    border-style: dashed !important; /* Use !important if other border styles are too specific */
+    border-style: dashed !important; 
     transform: scale(1.05); 
 }
 
-
 .battle-container { display: flex; justify-content: space-around; flex-wrap: wrap; }
 
-.interactive-battle-container .battle-item {
+/* Styling for items in the #rewardsDisplay container */
+.interactive-battle-container .battle-item,
+.historical-battle-item { /* Common styling for battle items */
     background-color: #ffffff; width: calc(33% - 24px); min-height: 220px; 
     padding: 10px; margin: 8px; border: 1px solid #adb5bd; border-radius: 5px;
     display: flex; flex-direction: column; align-items: center;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.interactive-battle-container .battle-item h4 { margin-top: 0; margin-bottom: 8px; color: #0056b3; }
-.interactive-battle-container .battle-item .reward-info p,
-.interactive-battle-container .battle-item .scherbius-observed-info p { 
-    margin: 3px 0; font-size: 0.8em; text-align: center;
+.interactive-battle-container .battle-item h4, /* For current round battle titles */
+.historical-battle-item h4 { /* For historical round battle titles */
+    margin-top: 0; margin-bottom: 8px; color: #0056b3; text-align: center;
 }
-.interactive-battle-container .battle-item .scherbius-observed-info {
+
+.reward-info p, .scherbius-observed-info p { 
+    margin: 3px 0; font-size: 0.8em; text-align: center;
+    display: flex; /* To align text and card containers nicely */
+    align-items: center;
+    gap: 5px; /* Space between label and cards */
+    justify-content: center; /* Center the content within the paragraph */
+}
+.scherbius-observed-info { /* Container for Scherbius's observed/committed cards */
     margin-top: 5px; padding-top: 5px; border-top: 1px dashed #e0e0e0; width: 90%;
 }
-/* This rule was for the container of slots, ensure it doesn't conflict with the new .turing-played-cards-area */
+
+/* Active Turing play area (container of slots) */
 .interactive-battle-container .battle-item .turing-played-cards-area {
     width: 100%; 
-    /* min-height: 80px; /* Already handled by .turing-played-cards-area general rule */
-    /* padding: 5px; /* Already handled by .turing-played-cards-area general rule */
-    margin-top: auto; 
-    border: 2px dashed #c3dae8; /* This is the border for the container of slots */
+    margin-top: auto; /* Pushes it to the bottom */
+    border: 2px dashed #c3dae8; 
     border-radius: 4px; 
     background-color: #f1f7fc;
-    /* display: flex; /* Already handled by .turing-played-cards-area general rule */
-    /* flex-wrap: wrap; /* Already handled by .turing-played-cards-area general rule */
-    align-content: flex-start; /* Good for when slots wrap */
+    align-content: flex-start; 
 }
-.interactive-battle-container .battle-item.drag-over .turing-played-cards-area { /* This is for dragging over the whole battle item, not a slot */
+.interactive-battle-container .battle-item.drag-over .turing-played-cards-area { 
     border-color: #007bff; 
     background-color: #e6f2ff;
 }
 
+/* For summary battle reports (if any were still used, e.g. in a different last round summary) */
 .summary-battle-container .summary-battle-report {
     background-color: #fdfdfe; width: calc(33% - 24px);
     padding: 10px; margin: 8px; border: 1px solid #ced4da; border-radius: 5px;
@@ -173,88 +163,64 @@ button:disabled { background-color: #cccccc; cursor: not-allowed; }
 #gameOverMessage { background-color: #d4edda; border-color: #c3e6cb; text-align: center; }
 #gameOverMessage h2 { color: #155724; }
 
-/* Commented out old encryption slot styles as they are not used */
-/* #encryptionGuessSlots.drag-over .encryption-guess-slot { border-color: #007bff; background-color: #e6f2ff; }
-#encryptionGuessSlots { justify-content: center; }
-.encryption-guess-slot {
-    width: 58px; height: 80px; margin: 5px; border-style: dotted; border-color: #b0c4de;
-    display: flex; justify-content: center; align-items: center;
-} */
-
-
 /* --- Display-Only Card Styling (for Rewards & Summaries) --- */
 .display-card-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px; /* Smaller gap for display cards */
-    justify-content: center; /* Center them if they don't fill the line */
+    gap: 3px; 
+    justify-content: center; 
     margin-top: 4px;
+    min-height: 25px; /* Ensure it has some height even if empty for alignment */
 }
 
 .display-card {
-    display: inline-flex; /* Use inline-flex to allow them on the same line but control inner content */
+    display: inline-flex; 
     justify-content: center;
     align-items: center;
-    width: 30px;  /* Smaller width */
-    height: 45px; /* Smaller height */
+    width: 30px;  
+    height: 45px; 
     padding: 4px;
     border: 1px solid #777;
     border-radius: 3px;
     font-weight: bold;
-    font-size: 0.8em; /* Smaller font */
+    font-size: 0.8em; 
     color: #333;
-    background-color: #f0f0f0; /* Default background */
+    background-color: #f0f0f0; 
     box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    margin: 1px; /* Minimal margin */
+    margin: 1px; 
 }
 
-/* Specific style for VP Reward "cards" */
 .display-card.vp-reward {
-    background-color: #ffe0cc; /* Light orange-pink */
+    background-color: #ffe0cc; 
     border-color: #ffbfa0;
     color: #c06030;
-    /* content: "VP"; /* If you want to prefix with VP, or just show the number */
 }
-.display-card.vp-reward::before { /* Optional: Add "VP" text before the number */
+.display-card.vp-reward::before { 
     content: "VP ";
     font-size: 0.8em;
     margin-right: 2px;
     font-weight: normal;
 }
 
-
-/* Specific style for Scherbius Display Cards */
 .display-card.scherbius-card {
-    background-color: #e6e0f2; /* Light deep violet / lavender */
+    background-color: #e6e0f2; 
     border-color: #c0b2d4;
     color: #59487a;
 }
 
-/* Style for encrypted Scherbius cards */
-.display-card.scherbius-card-encrypted {
-    border: 2px dashed #5a2a96; /* A darker shade of purple for the dashed border */
-    /* Optional: Add a subtle background change if needed, but border might be enough */
-    /* background-color: #f2e8ff; */
-}
+/* .display-card.scherbius-card-encrypted was removed */
 
-/* Specific style for Turing's played cards in summary */
-.display-card.turing-summary-card {
-    background-color: #d4eaff; /* Light blue, similar to hand but distinct */
+.display-card.turing-summary-card { /* For Turing's cards in historical/summary views */
+    background-color: #d4eaff; 
     border-color: #a8c5e0;
     color: #003d7a;
 }
 
-/* Adjust text alignment in info sections if needed */
-.reward-info p, .scherbius-observed-info p,
-.summary-battle-report p {
-    display: flex; /* To align text and card containers nicely */
-    align-items: center;
-    gap: 5px; /* Space between label and cards */
-}
 .reward-info .display-card-container,
 .scherbius-observed-info .display-card-container,
-.summary-battle-report .display-card-container {
-    justify-content: flex-start; /* Align cards to the start of their container */
+.summary-battle-report .display-card-container,
+.static-played-cards-area .display-card-container { /* Ensure historical Turing cards also align */
+    justify-content: flex-start; 
 }
 
 /* --- Historical Round View Styling --- */
@@ -263,79 +229,76 @@ button:disabled { background-color: #cccccc; cursor: not-allowed; }
     padding: 15px;
     border: 1px solid #c0c0c0;
     background-color: #f9f9f9;
-    border-radius: 6px; /* Consistent with other boxes */
+    border-radius: 6px; 
 }
 
-#historicalRoundViewArea h3 { /* Match other h3 */
+#historicalRoundViewArea h3 { 
     color: #333; 
     margin-top: 0; 
     margin-bottom: 0.8em;
+    text-align: center; /* Center the "Historical Round Details" title */
 }
 
 .history-navigation {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px; /* Increased margin */
-    padding-bottom: 10px; /* Added padding */
-    border-bottom: 1px solid #e0e0e0; /* Separator line */
+    margin-bottom: 15px; 
+    padding-bottom: 10px; 
+    border-bottom: 1px solid #e0e0e0; 
 }
 
 #historicalRoundIndicator {
     font-weight: bold;
-    font-size: 0.95em; /* Slightly adjusted size */
-    color: #0056b3; /* Theme color */
+    font-size: 0.95em; 
+    color: #0056b3; 
 }
 
-#historicalRoundContent p#historicalRoundInfo { /* Specificity for the info paragraph */
-    font-size: 0.9em;
-    margin-bottom: 10px; /* Spacing before battle details */
-    background-color: #e9ecef; /* Light background for info */
-    padding: 8px; /* Padding for info */
-    border-radius: 4px; /* Rounded corners for info */
-}
+/* #historicalRoundContent p#historicalRoundInfo was for a general info para, not used for battle display */
 
-/* Adjustments for battle reports within history to ensure consistency */
-#historicalRoundBattles .summary-battle-report {
-    /* Styles are inherited, but if specific overrides are needed, they go here */
-    /* e.g., width: calc(50% - 24px); if you want two per row */
-}
-
-/* Styling for rewards available in historical view */
-.rewards-available-info {
-    font-size: 0.85em;
-    margin-top: 8px;
-    padding-top: 5px;
-    border-top: 1px dashed #ddd;
-    color: #555;
-}
-.rewards-available-info .display-card-container {
-    margin-top: 2px;
-}
-
-/* --- Styling for Historical Items in Main Display --- */
+/* --- Styling for Historical Items in Main Display (#rewardsDisplay) --- */
 .historical-battle-item {
-    background-color: #f0f0f0; /* Slightly different background for past battles */
+    background-color: #f0f0f0; 
     border: 1px solid #dcdcdc;
 }
 
-.static-played-cards-area {
+.static-played-cards-area { /* Container for Turing's played cards in historical view */
     padding: 5px;
     margin-top: 10px;
     border-top: 1px dashed #ccc;
+    width: 90%; /* Match scherbius-observed-info width */
 }
-.static-played-cards-area h4 {
+.static-played-cards-area h4 { /* "Turing Played:" title */
     font-size: 0.9em;
     color: #555;
     margin-bottom: 5px;
+    text-align: center;
 }
 
-/* Ensure general .battle-item styling doesn't make historical items look interactive */
-.historical-battle-item .turing-played-cards-area,
-.historical-battle-item .scherbius-observed-info { /* Assuming scherbius-observed-info is reused for committed cards */
-    /* No interactive borders or backgrounds needed */
-}
+/* .historical-battle-item .card-slot was removed as historical views don't show empty slots */
 
-.historical-battle-item .card-slot { /* Historical views shouldn't show empty, dashed slots */
-    display: none; 
+/* --- Battle Outcome Styling (for historical view) --- */
+.battle-outcome {
+    font-weight: bold;
+    padding: 4px 8px;
+    margin: 8px auto 5px auto; /* Centering the outcome box */
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9em;
+    width: fit-content; /* Make it only as wide as its content */
+}
+.battle-outcome.turing-wins {
+    background-color: #d4edda; 
+    color: #155724; 
+    border: 1px solid #c3e6cb;
+}
+.battle-outcome.scherbius-wins {
+    background-color: #f8d7da; 
+    color: #721c24; 
+    border: 1px solid #f5c6cb;
+}
+.battle-outcome.draw {
+    background-color: #e2e3e5; 
+    color: #383d41; 
+    border: 1px solid #d6d8db;
 }

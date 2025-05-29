@@ -134,6 +134,7 @@ def game_state_endpoint():
     }
     return jsonify(client_data)
 
+
 @app.route('/submit_turing_action', methods=['POST'])
 def submit_turing_action():
     global game_state
@@ -142,57 +143,62 @@ def submit_turing_action():
         return jsonify({"error": "Game is over or not initialized."}), 400
 
     data = request.json
-    turing_submitted_strategy_values = data.get("turing_strategy") 
-    # turing_guesses no longer expected
-    # turing_submitted_guesses_values = data.get("turing_guesses") 
+    turing_submitted_strategy_values = data.get("turing_strategy")
 
     if not isinstance(turing_submitted_strategy_values, list) or \
-       len(turing_submitted_strategy_values) != GAME_CONFIG.n_battles: # Use game.config here
+       len(turing_submitted_strategy_values) != GAME_CONFIG.n_battles:
         return jsonify({"error": "Invalid Turing strategy format."}), 400
 
     scherbius_executed_strategy = game_state["scherbius_planned_strategy"]
     scherbius_executed_encryption = game_state["scherbius_planned_encryption"]
 
     prev_t_points = game.turing_points()
-    # Scherbius points are tracked by the library, not directly by game_state for this calculation
-    # We need to get it from the game instance if we want to calculate points gained by Scherbius for summary
-    prev_s_points = game.scherbius_points() 
-    # prev_encryption_broken_status = game.encryption_broken() # Removed
+    prev_s_points = game.scherbius_points()
 
-    # Call game.step without turing_guesses
-    game.step(turing_submitted_strategy_values, 
-              scherbius_executed_strategy, 
+    game.step(turing_submitted_strategy_values,
+              scherbius_executed_strategy,
               scherbius_executed_encryption)
 
     current_t_points = game.turing_points()
     current_s_points = game.scherbius_points()
     
+    # Get battle results to determine winners for history
+    battle_outcomes = game.battle_results() # List of (t_sum, s_sum, t_cards_won, t_vp_won)
+    battle_outcomes = [(bo.turing_sum, bo.scherbius_sum, bo.turing_cards_won, bo.turing_vp_won) for bo in battle_outcomes]
+
+    # For last_round_summary (if still used by client for anything, though display is removed)
     battle_details_summary = []
     for i in range(GAME_CONFIG.n_battles):
         battle_details_summary.append({
             "battle_id": i,
             "turing_played": turing_submitted_strategy_values[i],
-            "scherbius_committed": scherbius_executed_strategy[i] 
+            "scherbius_committed": scherbius_executed_strategy[i]
+            # Winner could be added here too if needed, but primary focus is history
         })
 
     game_state["last_round_summary"] = {
         "turing_points_gained_in_round": current_t_points - prev_t_points,
-        "scherbius_points_gained_in_round": current_s_points - prev_s_points, # Still useful for summary if shown
+        "scherbius_points_gained_in_round": current_s_points - prev_s_points,
         "battle_details": battle_details_summary,
-        "scherbius_encrypted_last_round": scherbius_executed_encryption # Keep if visual effect of encryption remains
+        "scherbius_encrypted_last_round": scherbius_executed_encryption
     }
 
-    # Construct and store historical round entry
-    # Assuming game.round_count() is not available, use len of history
     round_number = len(game_state["round_history"]) + 1
     
     historical_battle_details = []
     potential_rewards_for_round = game_state.get("current_round_potential_rewards", {
-        "card_rewards": [[] for _ in range(GAME_CONFIG.n_battles)], 
+        "card_rewards": [[] for _ in range(GAME_CONFIG.n_battles)],
         "vp_rewards": [0] * GAME_CONFIG.n_battles
     })
 
     for i in range(GAME_CONFIG.n_battles):
+        t_sum, s_sum, _, _ = battle_outcomes[i]
+        battle_winner_text = "Draw"
+        if t_sum > s_sum:
+            battle_winner_text = "Turing"
+        elif s_sum > t_sum:
+            battle_winner_text = "Scherbius"
+
         historical_battle_details.append({
             "id": i,
             "turing_played_cards": turing_submitted_strategy_values[i],
@@ -200,13 +206,14 @@ def submit_turing_action():
             "rewards_available_to_turing": {
                 "vp": potential_rewards_for_round["vp_rewards"][i],
                 "cards": potential_rewards_for_round["card_rewards"][i]
-            }
+            },
+            "winner": battle_winner_text # ADDED WINNER
         })
 
     historical_round_entry = {
         "round_number": round_number,
         "turing_total_points_after_round": current_t_points,
-        "scherbius_total_points_after_round": current_s_points, # For history, even if not always shown in UI
+        "scherbius_total_points_after_round": current_s_points,
         "scherbius_encrypted_this_round": scherbius_executed_encryption,
         "battles": historical_battle_details
     }

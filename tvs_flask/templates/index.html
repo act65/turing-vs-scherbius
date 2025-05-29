@@ -17,53 +17,41 @@
         <div class="scores-summary-box">
             <h2>Game Status</h2>
             <p>Turing Points: <span id="turingScore">0</span></p>
-            <p>Scherbius Points: <span id="scherbiusScore">???</span></p> <!-- Changed -->
+            <p>Scherbius Points: <span id="scherbiusScore">???</span></p>
             <p>Target to Win: <span id="maxVictoryPoints">N/A</span></p>
         </div>
 
-        <div id="lastRoundSummaryArea" style="display:none;">
-            <h3>Last Round Battle Results</h3>
-            <p id="lastRoundInfo"></p> <!-- General info like points gained -->
-            <div id="lastRoundSummaryBattles" class="battle-container summary-battle-container">
-                <!-- Populated by JS: per-battle summary -->
-            </div>
-        </div>
+        <!-- LastRoundSummaryArea was removed as requested -->
 
         <div id="historicalRoundViewArea" style="display:none;">
             <h3>Historical Round Details</h3>
             <div class="history-navigation">
-                <button id="prevRoundBtn" disabled>&lt; Previous Round</button>
+                <button id="prevRoundBtn" disabled>< Previous Round</button>
                 <span id="historicalRoundIndicator">Round X of Y</span>
-                <button id="nextRoundBtn" disabled>Next Round &gt;</button>
+                <button id="nextRoundBtn" disabled>Next Round ></button>
             </div>
-            <div id="historicalRoundContent">
-                <!-- Content will be populated by JavaScript -->
-                <!-- This structure can be similar to lastRoundSummaryArea's content -->
+            <!-- historicalRoundContent is not directly used for battle display anymore,
+                 rewardsDisplayEl is used for both current and historical battles.
+            -->
+            <div id="historicalRoundContent" style="display:none;"> <!-- Ensure this is hidden if not used -->
                 <p id="historicalRoundInfo"></p>
                 <div id="historicalRoundBattles" class="battle-container summary-battle-container">
-                    <!-- Populated by JS: per-battle summary for the historical round -->
                 </div>
             </div>
         </div>
 
         <div id="gameArea" style="display:none;">
             <div id="battleZoneArea">
-                <h3>Current Battles & Rewards (Drag Your Cards Here)</h3>
+                <h3 id="battleZoneTitle">Current Battles & Rewards (Drag Your Cards Here)</h3>
                 <div id="rewardsDisplay" class="battle-container interactive-battle-container"></div>
             </div>
             
             <div id="turingActionControls">
-                <div id="turingHandArea">
+                <div id="turingHandArea" style="display:none;"> <!-- Initially hidden, shown by JS for current round -->
                     <h3>Your Hand:</h3>
                     <div id="turingHand" class="card-source"></div>
                 </div>
-
-                <!-- Turing Guess Area REMOVED -->
-                <!-- <div id="turingGuessArea">
-                    <h3>Guess Encryption Key (<span id="encryptionCodeLen">N/A</span> cards):</h3>
-                    <div id="encryptionGuessSlots" class="card-source"></div>
-                </div> -->
-                <button id="submitTuringActionBtn">Submit Actions</button>
+                <button id="submitTuringActionBtn" style="display:none;">Submit Actions</button> <!-- Initially hidden -->
             </div>
         </div>
         
