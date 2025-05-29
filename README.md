@@ -49,6 +49,59 @@ I have also implemented a pygame interface for the game which supports the follo
 
 See 'py/' for the game interface.
 
+## Deployment to Google Cloud Platform
+
+This project can be deployed to Google Cloud Platform using Cloud Run and Artifact Registry, orchestrated with Terraform.
+
+### Prerequisites
+
+*   **Google Cloud SDK (`gcloud`)**: Install from [https://cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install) and authenticate with your GCP account (`gcloud auth login`, `gcloud auth application-default login`).
+*   **Docker**: Install from [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/).
+*   **Terraform**: Install from [https://learn.hashicorp.com/tutorials/terraform/install-cli](https://learn.hashicorp.com/tutorials/terraform/install-cli).
+*   **Enable GCP APIs**: Ensure the following APIs are enabled in your GCP project:
+    *   Artifact Registry API (`artifactregistry.googleapis.com`)
+    *   Cloud Run API (`run.googleapis.com`)
+    *   Cloud Build API (`cloudbuild.googleapis.com`) (Cloud Build is often used by Cloud Run for deployments, even if not explicitly building via Cloud Build)
+    You can enable them via the GCP console or using `gcloud services enable [API_NAME]`.
+
+### Deployment Steps
+
+1.  **Configure GCP Project and Region:**
+    Open the `deploy.sh` script and set your Google Cloud Project ID and Region at the top of the file:
+    ```bash
+    GCP_PROJECT_ID="your-gcp-project-id"
+    GCP_REGION="your-gcp-region" # e.g., us-central1
+    ```
+    You may also customize `ARTIFACT_REGISTRY_REPO_ID` and `CLOUD_RUN_SERVICE_NAME` if desired, though the defaults should work fine.
+
+2.  **Run the Deployment Script:**
+    Navigate to the root of the repository in your terminal and execute the script:
+    ```bash
+    ./deploy.sh
+    ```
+    The script will:
+    *   Build the Docker image for the Flask application.
+    *   Push the image to Google Artifact Registry.
+    *   Initialize Terraform.
+    *   Apply the Terraform configuration to create the Artifact Registry repository (if it doesn't exist) and deploy the application to Cloud Run.
+
+3.  **Access the Application:**
+    Once the script completes, it will output the URL of your deployed Cloud Run service. You can access the application by navigating to this URL in your web browser.
+
+### Cleaning Up
+
+To remove the deployed resources:
+
+1.  Navigate to the `terraform` directory:
+    ```bash
+    cd terraform
+    ```
+2.  Run `terraform destroy`, providing your project ID and region:
+    ```bash
+    terraform destroy -var="gcp_project_id=your-gcp-project-id" -var="gcp_region=your-gcp-region"
+    ```
+3.  You may also want to manually delete the Docker image from Artifact Registry if you no longer need it.
+
 # Installation
 
 First, clone the repository;
