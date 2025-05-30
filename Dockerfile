@@ -14,20 +14,20 @@ RUN apt-get update && apt-get install -y curl build-essential && \
 # Set the WORKDIR to /app
 WORKDIR /app
 
-# Copy the tvs_core directory into the image
-COPY tvs_core /app/tvs_core
-
-# Copy the tvs_flask directory into the image
-COPY tvs_flask /app/tvs_flask
-
 # Install build dependencies for maturin and the Rust project
 RUN pip install maturin wheel pytest
+
+# Install Flask
+RUN pip install Flask
+
+# Copy the tvs_core directory into the image
+COPY tvs_core /app/tvs_core
 
 # Install the tvs_core Rust project as a Python package
 RUN cd /app/tvs_core && make
 
-# Install Flask
-RUN pip install Flask
+# Copy the tvs_flask directory into the image
+COPY tvs_flask /app/tvs_flask
 
 # Change WORKDIR to /app/tvs_flask
 WORKDIR /app/tvs_flask
