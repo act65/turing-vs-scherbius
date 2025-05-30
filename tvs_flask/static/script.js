@@ -53,15 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
             }
             const state = await response.json();
-            if (endpoint === '/submit_turing_action' && method === 'POST') {
-                if (state.round_history && state.round_history.length > 0) {
-                    clientState.currentHistoryViewIndex = state.round_history.length - 1;
-                } else {
-                    // This case should ideally not happen if a round was just submitted,
-                    // but as a fallback, view the current round if history is empty.
-                    clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
-                }
-            }
+
             updateGlobalUI(state); // Call the main UI updater
         } catch (error) {
             console.error(`API Error (${endpoint}):`, error);
