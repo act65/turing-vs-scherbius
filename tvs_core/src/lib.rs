@@ -9,11 +9,6 @@ use rand::{
 };
 use std::sync::Arc;
 
-// #[cfg(not(target_arch = "wasm32"))] // No longer needed, StdRng imported above
-// use rand::rngs::StdRng;
-// #[cfg(not(target_arch = "wasm32"))] // No longer needed, SeedableRng imported above
-// use rand::SeedableRng;
-
 // For wasm32, StdRng might not be available or ideal.
 // Consider using a wasm-friendly RNG if targeting wasm32 primarily for GameState's internal RNG.
 // For now, we'll assume StdRng is acceptable or this part is non-wasm critical.
@@ -58,8 +53,6 @@ struct GameState {
     turing_hand: Vec<u32>,
     scherbius_hand: Vec<u32>,
 
-    encryption: Vec<u32>, // This seems unused, consider removing or implementing its use
-
     turing_points: u32,
     scherbius_points: u32,
 
@@ -74,7 +67,7 @@ struct GameState {
 
 
 // Add a new struct to hold detailed battle results
-#[pyclass] // MAKE THIS A PYCLASS
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BattleOutcomeDetail {
     #[pyo3(get)] // Expose fields to Python
@@ -119,7 +112,6 @@ impl GameState {
             // encryption field is initialized but not clearly used later.
             // If it's for the game's core encryption concept, it should be integrated.
             // For now, assuming it's separate from enigma::EasyEnigma's internal state.
-            encryption: utils::sample_random_ints(game_config.encryption_code_len, game_config.encryption_vocab_size, &mut rng),
             encoder: enigma::EasyEnigma::new(game_config.encryption_vocab_size, &mut rng), // Assuming vocab_size for enigma
             winner: Actor::Null,
             rng: rng,
@@ -227,10 +219,18 @@ impl GameState {
         if scherbius_action.encryption {
             if self.scherbius_points >= self.game_config.encryption_cost {
                 self.scherbius_points -= self.game_config.encryption_cost;
-                let val1 = self.rng.gen_range(0..self.game_config.encryption_vocab_size);
-                let val2 = self.rng.gen_range(0..self.game_config.encryption_vocab_size);
-                self.encoder.set([val1, val2]);
-                self.encoder.reset();
+                // Create a new EasyEnigma instance using the game's RNG
+                // This effectively changes all wirings and resets steps to [0,0]
+                self.encoder = enigma::EasyEnigma::new(self.game_config.encryption_vocab_size, &mut self.rng);
+                // No need for self.encoder.reset() as new() initializes steps to [0,0].
+                // No need for self.encoder.set(...) as rotor values are now complex wirings.
+                if self.game_config.verbose {
+                    println!("Scherbius re-encrypted. New Enigma settings generated.");
+                }
+            } else {
+                 if self.game_config.verbose {
+                    println!("Scherbius attempted re-encryption but lacked points.");
+                }
             }
         }
 
@@ -628,7 +628,6 @@ mod tests {
         let mut game = GameState {
             turing_hand: vec![1, 2, 3, 4, 5, 6], 
             scherbius_hand: vec![10, 20, 30, 40, 50, 60], 
-            encryption: vec![1, 2], 
             turing_points: 0,
             scherbius_points: 0,
             encoder: enigma::EasyEnigma::new(config.encryption_vocab_size, &mut rng.clone()), 
@@ -768,8 +767,7 @@ mod tests {
         assert_eq!(game1.turing_hand, game2.turing_hand, "Turing hands should be identical");
         assert_eq!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should be identical");
         assert_eq!(game1.rewards, game2.rewards, "Rewards lists should be identical");
-        assert_eq!(game1.encoder.get_rotors(), game2.encoder.get_rotors(), "Enigma rotors should be identical");
-        assert_eq!(game1.encryption, game2.encryption, "Initial encryption codes should be identical");
+        assert_eq!(game1.encoder.get_rotor_wirings(), game2.encoder.get_rotor_wirings(), "Enigma rotors should be identical");
     }
 
     #[test]
@@ -791,8 +789,7 @@ mod tests {
             assert!(!rewards_match, "Rewards lists should differ (highly probable)");
         } 
         
-        assert_ne!(game1.encoder.get_rotors(), game2.encoder.get_rotors(), "Enigma rotors should differ (highly probable)");
-        assert_ne!(game1.encryption, game2.encryption, "Initial encryption codes should differ (highly probable)");
+        assert_ne!(game1.encoder.get_rotor_wirings(), game2.encoder.get_rotor_wirings(), "Enigma rotors should differ (highly probable)");
     }
 
     #[test]
@@ -806,14 +803,5 @@ mod tests {
         assert_eq!(game.turing_points, 0, "Initial Turing points should be 0");
         assert_eq!(game.scherbius_points, 0, "Initial Scherbius points should be 0");
         assert_eq!(game.winner, Actor::Null, "Initial winner should be Null");
-
-        let rotors = game.encoder.get_rotors();
-        assert!(rotors[0] < config.encryption_vocab_size && rotors[0] >= 1, "Encoder rotor0 out of expected range");
-        assert!(rotors[1] < config.encryption_vocab_size && rotors[1] >= 1, "Encoder rotor1 out of expected range");
-        
-        assert_eq!(game.encryption.len(), config.encryption_code_len as usize, "Encryption code length mismatch");
-        for val in &game.encryption {
-            assert!(*val < config.encryption_vocab_size && *val >=1, "Encryption code value out of expected range");
-        }
     }
 }
