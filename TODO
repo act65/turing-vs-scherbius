@@ -1,13 +1,17 @@
 Core
-- add the option to use a reflector
+- add the option to use a reflector?
+- reset the engima steps every round
+- change to be a finite deck of cards
+- add 0 card (only to scherbius!?)
 
 RL
-
+- mcts. can share value fn between scherbius and turing
 
 Site
 - support playing as scherbius
 - display config variables at top
 - add tests
+- need to guarantee the order of which cards Scherbius encrypts first?
 
 meta search
 - we want to game to require; turing to actually codebreak, scherbius to model likelihoods and sometimes reset the encryption, 
