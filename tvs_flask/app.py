@@ -29,9 +29,9 @@ game_state = {
     "current_round_potential_rewards": None
 }
 
-def scherbius_ai_play(current_scherbius_hand, num_battles):
+def ai_player(hand, num_battles):
     strategy = [[] for _ in range(num_battles)]
-    hand_copy = list(current_scherbius_hand)
+    hand_copy = list(hand)
     random.shuffle(hand_copy)
     for i in range(num_battles):
         if not hand_copy: break
@@ -40,18 +40,17 @@ def scherbius_ai_play(current_scherbius_hand, num_battles):
             for _ in range(num_cards_to_play):
                 if hand_copy:
                     strategy[i].append(hand_copy.pop())
-    # Scherbius's decision to "encrypt" might still affect how its cards are shown,
-    # even if Turing can't guess. Or this can be removed if not used.
-    # For now, let's assume it might still visually obscure cards.
+
     encrypt = random.choice([True, False])
     return strategy, encrypt
+
 
 def prepare_round_start_data(is_new_round_for_turing=True):
     global game_state
     game = game_state["game_instance"]
 
-    scherbius_raw_hand_values = game.scherbius_observation() 
-    s_strategy, s_encrypts = scherbius_ai_play(scherbius_raw_hand_values, GAME_CONFIG.n_battles)
+    scherbius_raw_hand_values = game.scherbius_observation()
+    s_strategy, s_encrypts = ai_player(scherbius_raw_hand_values, GAME_CONFIG.n_battles)
     
     game_state["scherbius_planned_strategy"] = s_strategy
     game_state["scherbius_planned_encryption"] = s_encrypts
