@@ -9,12 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitTuringActionBtn = document.getElementById('submitTuringActionBtn');
     const gameAreaEl = document.getElementById('gameArea');
     const gameOverMessageEl = document.getElementById('gameOverMessage');
-    // REMOVED: const lastRoundSummaryAreaEl = document.getElementById('lastRoundSummaryArea');
-    // REMOVED: const lastRoundInfoEl = document.getElementById('lastRoundInfo');
-    // REMOVED: const lastRoundSummaryBattlesEl = document.getElementById('lastRoundSummaryBattles');
     const rewardsDisplayEl = document.getElementById('rewardsDisplay');
     const turingHandEl = document.getElementById('turingHand');
-    const battleZoneTitleEl = document.getElementById('battleZoneTitle'); // Added
+    const battleZoneTitleEl = document.getElementById('battleZoneTitle');
 
     // --- DOM Elements for Historical View ---
     const historicalRoundViewAreaEl = document.getElementById('historicalRoundViewArea');
@@ -22,8 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextRoundBtnEl = document.getElementById('nextRoundBtn');
     const historicalRoundIndicatorEl = document.getElementById('historicalRoundIndicator');
     // const historicalRoundContentEl = document.getElementById('historicalRoundContent'); // Kept for structure, but content not primary display
-    // const historicalRoundInfoEl = document.getElementById('historicalRoundInfo'); // Not used for battle display
-    // const historicalRoundBattlesEl = document.getElementById('historicalRoundBattles'); // Not used for battle display
 
     // --- Client-Side Game State ---
     let clientState = {
@@ -32,14 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
         nBattles: 0,
         maxCardsPerBattle: 0,
         draggedCard: { id: null, value: null, originType: null, originId: null, element: null, originSlotIndex: null },
-        // scherbius_did_encrypt: false, // This is part of latestServerState, not needed separately here for current round logic
         roundHistory: [],
         currentHistoryViewIndex: 0,
         latestServerState: null
     };
     const VIEWING_CURRENT_ROUND_INDEX = () => clientState.roundHistory.length;
 
-    // --- API Calls --- (Same as before)
+    // --- API Calls ---
     async function fetchApi(endpoint, method = 'GET', body = null) {
         try {
             const options = { method };
@@ -54,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const state = await response.json();
 
-            updateGlobalUI(state); // Call the main UI updater
+            updateGlobalUI(state, endpoint); // Pass endpoint to UI updater
         } catch (error) {
             console.error(`API Error (${endpoint}):`, error);
             alert(`Error: ${error.message}`);
@@ -62,47 +56,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Main UI Update Function ---
-    function updateGlobalUI(serverState) {
-        console.log("Server state received:", serverState);
+    function updateGlobalUI(serverState, endpointCalled) {
+        console.log("Server state received:", serverState, "from endpoint:", endpointCalled);
         gameAreaEl.style.display = 'block';
 
         turingScoreEl.textContent = serverState.turing_points;
-        scherbiusScoreEl.textContent = "???"; // Scherbius points remain hidden
+        scherbiusScoreEl.textContent = "???";
         maxVictoryPointsEl.textContent = serverState.max_victory_points;
         
         clientState.nBattles = serverState.n_battles;
         clientState.maxCardsPerBattle = serverState.max_cards_per_battle;
         clientState.roundHistory = serverState.round_history || [];
-        clientState.latestServerState = serverState;
+        clientState.latestServerState = serverState; // Store the latest complete server state
 
+        const newRoundHistoryLength = clientState.roundHistory.length;
+
+        // Determine currentHistoryViewIndex based on game state and the action performed
         if (serverState.is_game_over) {
-            if (clientState.roundHistory.length > 0) {
-                clientState.currentHistoryViewIndex = clientState.roundHistory.length - 1;
+            // If game is over, view the last completed round
+            if (newRoundHistoryLength > 0) {
+                clientState.currentHistoryViewIndex = newRoundHistoryLength - 1;
             } else {
+                clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); // Should be 0
+            }
+        } else { // Game not over
+            if (endpointCalled === '/submit_turing_action' && newRoundHistoryLength > 0) {
+                // After submitting an action, view the results of the round that was just completed
+                clientState.currentHistoryViewIndex = newRoundHistoryLength - 1;
+            } else {
+                // For new_game, initial load, or other state updates, view the current action phase setup
                 clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
             }
-        } else {
-            clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
         }
-
+        
+        // Reset hand and battle plays only if viewing the current round's setup phase
         if (serverState.current_phase === "Turing_Action" && clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX()) {
             clientState.initialHandForTurn = [...(serverState.turing_hand || [])]; 
             clientState.battlePlays = {};
             for(let i=0; i < clientState.nBattles; i++) clientState.battlePlays[`battle_${i}`] = [];
         }
         
-        renderMainBattleDisplay(serverState); // Unified display function
-        
-        // REMOVED: Last round summary display logic
-        // if (serverState.last_round_summary && clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX()) {
-        //     lastRoundSummaryAreaEl.style.display = 'block';
-        //     renderLastRoundSummary(serverState.last_round_summary); // This function will be removed
-        // } else {
-        //     lastRoundSummaryAreaEl.style.display = 'none';
-        // }
+        renderMainBattleDisplay(serverState);
         
         historicalRoundViewAreaEl.style.display = 'block';
-        // historicalRoundContentEl.style.display = 'none'; // Content within this is not the primary battle display
 
         updateHistoryNavigationControls(); 
         manageRoundViewSpecificUI();
@@ -110,18 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (serverState.is_game_over) {
             gameOverMessageEl.style.display = 'block';
             winnerEl.textContent = serverState.winner;
-            submitTuringActionBtn.disabled = true;
+            // submitTuringActionBtn.disabled = true; // Handled by manageRoundViewSpecificUI
         } else {
             gameOverMessageEl.style.display = 'none';
-            submitTuringActionBtn.disabled = false;
         }
     }
 
-    // --- Card Rendering and D&D --- (Largely same, createCardElement is fine)
+    // --- Card Rendering and D&D ---
     function createCardElement(cardObject, originType, originId, originSlotIndex = null) {
         const cardDiv = document.createElement('div');
         cardDiv.classList.add('card');
-        cardDiv.textContent = cardObject.value; // Value could be 'X' if encrypted by backend
+        cardDiv.textContent = cardObject.value;
         cardDiv.draggable = true;
         cardDiv.dataset.cardId = cardObject.id;
         cardDiv.dataset.cardValue = cardObject.value;
@@ -134,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cardDiv.addEventListener('dragstart', (e) => {
             clientState.draggedCard = { 
                 id: e.target.dataset.cardId, 
-                value: e.target.dataset.cardValue === 'X' ? 'X' : parseInt(e.target.dataset.cardValue), // Handle 'X' for value if needed
+                value: e.target.dataset.cardValue === 'X' ? 'X' : parseInt(e.target.dataset.cardValue),
                 originType: e.target.dataset.originType, 
                 originId: e.target.dataset.originId,
                 originSlotIndex: e.target.dataset.originSlotIndex !== undefined ? parseInt(e.target.dataset.originSlotIndex) : null,
@@ -150,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return cardDiv;
     }
 
-    // findCardInArrayById, removeCardFromArrayById (Same)
     function findCardInArrayById(cardArray, cardId) {
         return cardArray.find(card => card && card.id === cardId);
     }
@@ -160,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    // renderAllPlayableCardAreas (Same)
     function renderAllPlayableCardAreas() {
         let cardsEffectivelyInHandObjects = [...clientState.initialHandForTurn];
         Object.values(clientState.battlePlays).flat().forEach(playedCardObj => {
@@ -192,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // handleCardDrop, handleCardDropToHand, addDropListenersToElement (Same)
     function handleCardDrop(targetBattleId, targetSlotIndex) {
         const { id: draggedCardId, originType, originId, originSlotIndex } = clientState.draggedCard;
         if (!draggedCardId) return;
@@ -222,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Check if trying to add to a full battle, unless reordering within the same battle
         if (targetBattleCards.length >= clientState.maxCardsPerBattle && 
             !(originType === 'battleSlot' && originId === targetBattleId)) {
             console.warn(`Battle ${targetBattleId} is full. Cannot add new card.`);
@@ -253,17 +244,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let cardObjectToMove = null;
-
+        // let cardObjectToMove = null; // Not strictly needed if we just re-render
         if (originType === 'battleSlot') {
             if (clientState.battlePlays[originId] && clientState.battlePlays[originId][originSlotIndex]) {
-                cardObjectToMove = clientState.battlePlays[originId].splice(originSlotIndex, 1)[0];
+                /* cardObjectToMove = */ clientState.battlePlays[originId].splice(originSlotIndex, 1)[0];
             }
         }
-
-        if (!cardObjectToMove) {
-            console.error("Card to return to hand not found in origin slot.");
-        }
+        // if (!cardObjectToMove) { // Card might have been moved by other means or error
+        //     console.error("Card to return to hand not found in origin slot.");
+        // }
         renderAllPlayableCardAreas();
     }
 
@@ -300,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const existingCardElement = element.querySelector('.card');
                 if (existingCardElement && existingCardElement !== clientState.draggedCard.element) {
                     console.warn("Slot is already occupied by a different card.");
-                    renderAllPlayableCardAreas();
+                    renderAllPlayableCardAreas(); // Re-render to reflect actual state
                     return;
                 }
                 handleCardDrop(battleId, slotIndex);
@@ -311,45 +300,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Main Battle Display (Unified for Current and Historical) ---
-    function renderMainBattleDisplay(serverOrFullStateData) {
+    function renderMainBattleDisplay(serverOrFullStateData) { // serverOrFullStateData is latestServerState
         const historyIdx = clientState.currentHistoryViewIndex;
         const isViewingCurrentRound = (historyIdx === VIEWING_CURRENT_ROUND_INDEX());
         
         rewardsDisplayEl.innerHTML = ''; 
 
-        let numBattlesToDisplay, maxCardsPerBattleForDisplay;
-
         if (isViewingCurrentRound) {
             battleZoneTitleEl.textContent = "Current Battles & Rewards (Drag Your Cards Here)";
-            numBattlesToDisplay = serverOrFullStateData.n_battles;
-            maxCardsPerBattleForDisplay = clientState.maxCardsPerBattle;
-        } else {
-            const roundData = clientState.roundHistory[historyIdx];
-            if (!roundData || !roundData.battles) {
-                console.error("Historical round data or battles missing for index:", historyIdx);
-                battleZoneTitleEl.textContent = "Error displaying historical round.";
-                return;
-            }
-            battleZoneTitleEl.textContent = `Details for Past Round ${roundData.round_number}`;
-            numBattlesToDisplay = roundData.battles.length;
-            maxCardsPerBattleForDisplay = 0; // Not strictly needed for historical display of played cards
-                                             // but kept if slot structure was to be mimicked
-            if (roundData.battles.length > 0) {
-                 maxCardsPerBattleForDisplay = roundData.battles.reduce((maxOverall, battle) => {
-                    const maxInBattle = Math.max(
-                        battle.turing_played_cards.length,
-                        battle.scherbius_committed_cards.length
-                    );
-                    return Math.max(maxOverall, maxInBattle);
-                }, 0);
-            }
-            if (maxCardsPerBattleForDisplay === 0) maxCardsPerBattleForDisplay = 3; // Fallback
-        }
+            const numBattlesToDisplay = serverOrFullStateData.n_battles;
+            const maxCardsPerBattleForDisplay = clientState.maxCardsPerBattle; // Use current game setting for slots
 
-        if (isViewingCurrentRound) {
             const currentRewards = serverOrFullStateData.rewards;
             const currentScherbiusObserved = serverOrFullStateData.scherbius_observed_plays;
-            // const currentScherbiusEncrypted = serverOrFullStateData.scherbius_did_encrypt; // Not used for styling
 
             for (let i = 0; i < numBattlesToDisplay; i++) {
                 const battleId = `battle_${i}`;
@@ -375,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (hasRewards) {
                     rewardInfoHTML += `<p>Potential Rewards: ${rewardsContent}</p>`;
                 } else {
-                    rewardInfoHTML += `<p>Potential Rewards: <div class="display-card-container"></div></p>`; // Empty container
+                    rewardInfoHTML += `<p>Potential Rewards: <div class="display-card-container"></div></p>`;
                 }
                 rewardInfoHTML += `</div>`;
 
@@ -383,14 +346,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const scherbiusPlayForBattle = (currentScherbiusObserved && currentScherbiusObserved[i]) ? currentScherbiusObserved[i] : [];
                 let scherbiusCardsContent = '<div class="display-card-container">';
                 if (scherbiusPlayForBattle.length > 0) {
-                    scherbiusPlayForBattle.forEach(cardVal => { // cardVal is 'X' if encrypted by backend
+                    scherbiusPlayForBattle.forEach(cardVal => {
                         const cardEl = document.createElement('div');
                         cardEl.classList.add('display-card', 'scherbius-card');
-                        // REMOVED: No scherbius-card-encrypted class based on flag
                         cardEl.textContent = cardVal;
                         scherbiusCardsContent += cardEl.outerHTML;
                     });
-                } // else: scherbiusCardsContent remains an empty container
+                }
                 scherbiusCardsContent += '</div>';
                 scherbiusInfoHTML += `<p>Scherbius Will Play: ${scherbiusCardsContent}</p></div>`;
 
@@ -414,16 +376,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } else { // RENDER HISTORICAL ROUND (STATIC)
             const roundData = clientState.roundHistory[historyIdx];
-            if (!roundData) return;
+            if (!roundData || !roundData.battles) {
+                console.error("Historical round data or battles missing for index:", historyIdx);
+                battleZoneTitleEl.textContent = "Error displaying historical round.";
+                return;
+            }
+            battleZoneTitleEl.textContent = `Details for Past Round ${roundData.round_number}`;
 
             roundData.battles.forEach(battle => {
                 const battleDiv = document.createElement('div');
                 battleDiv.classList.add('battle-item', 'historical-battle-item');
 
-                // Battle Title
                 let titleHTML = `<h4>Battle ${battle.id + 1} (Round ${roundData.round_number})</h4>`;
 
-                // Battle Outcome
                 let battleOutcomeHTML = '';
                 if (battle.winner) {
                     let outcomeClass = '';
@@ -443,7 +408,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 
-                // Historical Reward Info
                 let rewardInfoHTML = `<div class="reward-info">`;
                 let rewardsContent = '<div class="display-card-container">';
                 let hasRewards = false;
@@ -457,33 +421,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     hasRewards = true;
                 }
-                // if (!hasRewards) rewardsContent += ''; // Empty container is default
                 rewardsContent += '</div>';
-                rewardInfoHTML += `<p>Rewards Available: ${rewardsContent}</p></div>`; // Changed label slightly
+                rewardInfoHTML += `<p>Rewards Available: ${rewardsContent}</p></div>`;
 
-                // Scherbius Committed Info
-                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`; // Re-using class for layout consistency
+                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`;
                 let scherbiusCardsContent = '<div class="display-card-container">';
                 if (battle.scherbius_committed_cards.length > 0) {
-                    battle.scherbius_committed_cards.forEach(cardVal => { // cardVal is 'X' if encrypted by backend
+                    battle.scherbius_committed_cards.forEach(cardVal => {
                         const cardEl = document.createElement('div');
                         cardEl.classList.add('display-card', 'scherbius-card');
-                        // REMOVED: No scherbius-card-encrypted class based on flag
                         cardEl.textContent = cardVal;
                         scherbiusCardsContent += cardEl.outerHTML;
                     });
-                } // else: scherbiusCardsContent remains an empty container
+                }
                 scherbiusCardsContent += '</div>';
                 scherbiusInfoHTML += `<p>Scherbius Committed: ${scherbiusCardsContent}</p></div>`;
                 
-                // Turing's Played Cards
                 let turingPlayedHTML = `<div class="turing-played-cards-area static-played-cards-area"><h4>Turing Played:</h4>`;
                 let turingCardsContent = '<div class="display-card-container">';
                 if (battle.turing_played_cards.length > 0) {
                     battle.turing_played_cards.forEach(cardVal => {
                          turingCardsContent += `<div class="display-card turing-summary-card">${cardVal}</div>`;
                     });
-                } // else: turingCardsContent remains an empty container
+                }
                 turingCardsContent += '</div>';
                 turingPlayedHTML += `${turingCardsContent}</div>`;
 
@@ -493,15 +453,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // REMOVED: renderLastRoundSummary function
-    // function renderLastRoundSummary(summary) { ... }
-
     // --- Event Listeners ---
     newGameBtn.addEventListener('click', () => {
-        // REMOVED: lastRoundSummaryAreaEl.style.display = 'none';
         gameOverMessageEl.style.display = 'none';
-        clientState.roundHistory = [];
-        // currentHistoryViewIndex will be set by updateGlobalUI
+        // clientState.roundHistory = []; // Will be reset by server response via updateGlobalUI
         fetchApi('/new_game', 'POST');
     });
 
@@ -511,7 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const battleId = `battle_${i}`;
             const cardsInBattle = clientState.battlePlays[battleId] || [];
             finalTuringStrategyValues.push(cardsInBattle.map(cardObj => {
-                // Ensure card value is correctly parsed if it was 'X' or similar
                 return cardObj.value === 'X' ? 'X' : parseInt(cardObj.value);
             }));
         }
@@ -526,37 +480,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     gameAreaEl.style.display = 'none';
     gameOverMessageEl.style.display = 'none';
-    // REMOVED: lastRoundSummaryAreaEl.style.display = 'none';
-    // historicalRoundContentEl.style.display = 'none'; // Handled by manageRoundViewSpecificUI or direct styling
-    clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
+    // historicalRoundContentEl.style.display = 'none'; 
+    clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); // Initially 0
     updateHistoryNavigationControls();
-    manageRoundViewSpecificUI();
+    manageRoundViewSpecificUI(); // Will hide controls as latestServerState is null
 
     // --- UI State Management for Current vs. Historical View ---
     function manageRoundViewSpecificUI() {
         const isViewingCurrent = clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX();
+        // Default to true for isGameOver if latestServerState is null, to be safe (e.g. disable buttons initially)
         const isGameOver = clientState.latestServerState ? clientState.latestServerState.is_game_over : true; 
-        // const hasLastRoundSummary = clientState.latestServerState && clientState.latestServerState.last_round_summary; // Not needed
+        const isTuringActionPhase = clientState.latestServerState ? clientState.latestServerState.current_phase === "Turing_Action" : false;
 
-        turingHandEl.style.display = isViewingCurrent ? 'flex' : 'none';
-        document.getElementById('turingHandArea').style.display = isViewingCurrent ? 'block' : 'none'; // Show/hide whole hand area
-        document.getElementById('turingActionControls').querySelector('h3').style.display = isViewingCurrent ? 'block' : 'none'; // Show/hide "Your Hand:" title
+        // Show Turing's hand and action controls only if:
+        // 1. Viewing the current round's setup (not a past round summary)
+        // 2. It's actually Turing's action phase
+        // 3. The game is not over
+        const showTuringControls = isViewingCurrent && isTuringActionPhase && !isGameOver;
 
+        const turingHandArea = document.getElementById('turingHandArea');
+        const turingActionControlsTitle = document.getElementById('turingActionControls').querySelector('h3');
 
-        submitTuringActionBtn.style.display = isViewingCurrent ? 'block' : 'none'; // Show/hide submit button
-        submitTuringActionBtn.disabled = !isViewingCurrent || isGameOver;
+        if (turingHandArea) turingHandArea.style.display = showTuringControls ? 'block' : 'none';
+        if (turingActionControlsTitle) turingActionControlsTitle.style.display = showTuringControls ? 'block' : 'none';
+        turingHandEl.style.display = showTuringControls ? 'flex' : 'none';
         
-        // REMOVED: Last round summary visibility logic
-        // if (isViewingCurrent && hasLastRoundSummary) { ... }
-
+        submitTuringActionBtn.style.display = showTuringControls ? 'block' : 'none';
+        submitTuringActionBtn.disabled = !showTuringControls;
+        
         gameAreaEl.style.display = clientState.latestServerState ? 'block' : 'none'; 
         historicalRoundViewAreaEl.style.display = clientState.latestServerState ? 'block' : 'none';
-        // The content of historicalRoundViewArea (like historicalRoundInfoEl) is not directly managed here for battle display
-        // as renderMainBattleDisplay populates rewardsDisplayEl.
-        // document.getElementById('historicalRoundContent').style.display = isViewingCurrent ? 'none' : 'block'; // Example if it had separate content
     }
 
-    // --- Navigation Controls Update --- (Same as before)
+    // --- Navigation Controls Update ---
     function updateHistoryNavigationControls() {
         const historyLen = clientState.roundHistory.length;
         const viewingCurrent = clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX();
@@ -566,15 +522,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (viewingCurrent) {
             if (historyLen > 0) {
-                historicalRoundIndicatorEl.textContent = `Viewing Current Round (After Round ${historyLen})`;
+                historicalRoundIndicatorEl.textContent = `Viewing Current Round (Prepare for Round ${historyLen + 1})`;
             } else {
-                historicalRoundIndicatorEl.textContent = "Viewing Current Round (Round 1)";
+                historicalRoundIndicatorEl.textContent = "Viewing Current Round (Prepare for Round 1)";
             }
         } else {
             if (historyLen > 0 && clientState.currentHistoryViewIndex < historyLen) {
                 historicalRoundIndicatorEl.textContent = `Viewing Past Round ${clientState.roundHistory[clientState.currentHistoryViewIndex].round_number} of ${historyLen}`;
             } else {
-                historicalRoundIndicatorEl.textContent = "History Navigation";
+                // Should not happen if navigation is correct, but as a fallback:
+                historicalRoundIndicatorEl.textContent = "History Navigation"; 
             }
         }
     }
@@ -582,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
     prevRoundBtnEl.addEventListener('click', () => {
         if (clientState.currentHistoryViewIndex > 0) {
             clientState.currentHistoryViewIndex--;
-            renderMainBattleDisplay(clientState.latestServerState);
+            renderMainBattleDisplay(clientState.latestServerState); // Re-render with existing server state
             updateHistoryNavigationControls();
             manageRoundViewSpecificUI();
         }
@@ -591,6 +548,28 @@ document.addEventListener('DOMContentLoaded', () => {
     nextRoundBtnEl.addEventListener('click', () => {
         if (clientState.currentHistoryViewIndex < VIEWING_CURRENT_ROUND_INDEX()) {
             clientState.currentHistoryViewIndex++;
+
+            // **BUG FIX STARTS HERE**
+            // If we are now viewing the current round's action phase,
+            // ensure the hand and battle plays are reset for the new turn.
+            if (clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX() &&
+                clientState.latestServerState &&
+                clientState.latestServerState.current_phase === "Turing_Action") {
+                
+                // Re-initialize hand from the latest server state for the new turn
+                clientState.initialHandForTurn = [...(clientState.latestServerState.turing_hand || [])];
+                
+                // nBattles and maxCardsPerBattle should already be up-to-date in clientState
+                // from the last updateGlobalUI call, reflecting the current round's parameters.
+                
+                // Reset battlePlays for the new turn
+                clientState.battlePlays = {};
+                for (let i = 0; i < clientState.nBattles; i++) { // clientState.nBattles is for the current round
+                    clientState.battlePlays[`battle_${i}`] = [];
+                }
+            }
+            // **BUG FIX ENDS HERE**
+
             renderMainBattleDisplay(clientState.latestServerState);
             updateHistoryNavigationControls();
             manageRoundViewSpecificUI();
