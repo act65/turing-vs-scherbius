@@ -33,10 +33,10 @@ pub struct GameConfig {
     pub n_battles: u32,
     // re-encrypting costs victory points
     pub encryption_cost: u32,
-    // how many values in the encryption code
-    pub encryption_code_len: u32,
     // how many values in the encryption vocab
     pub encryption_vocab_size: u32,
+    // how many rotors to use
+    pub encryption_k_rotors: u32,
     // maximum value of victory points in the rewards
     pub max_vp: u32,
     // maximum number of cards in the rewards
@@ -112,7 +112,9 @@ impl GameState {
             // encryption field is initialized but not clearly used later.
             // If it's for the game's core encryption concept, it should be integrated.
             // For now, assuming it's separate from enigma::EasyEnigma's internal state.
-            encoder: enigma::EasyEnigma::new(game_config.encryption_vocab_size, &mut rng), // Assuming vocab_size for enigma
+            encoder: enigma::EasyEnigma::new(game_config.encryption_vocab_size, 
+                game_config.encryption_k_rotors as usize,
+                &mut rng), // Assuming vocab_size for enigma
             winner: Actor::Null,
             rng: rng,
             rewards: rewards,
@@ -221,7 +223,10 @@ impl GameState {
                 self.scherbius_points -= self.game_config.encryption_cost;
                 // Create a new EasyEnigma instance using the game's RNG
                 // This effectively changes all wirings and resets steps to [0,0]
-                self.encoder = enigma::EasyEnigma::new(self.game_config.encryption_vocab_size, &mut self.rng);
+                self.encoder = enigma::EasyEnigma::new(
+                    self.game_config.encryption_vocab_size, 
+                    self.game_config.encryption_k_rotors as usize,
+                    &mut self.rng);
                 // No need for self.encoder.reset() as new() initializes steps to [0,0].
                 // No need for self.encoder.set(...) as rotor values are now complex wirings.
                 if self.game_config.verbose {
@@ -365,9 +370,9 @@ pub struct PyGameConfig {
     #[pyo3(get)]
     encryption_cost: u32,
     #[pyo3(get)]
-    encryption_code_len: u32,
-    #[pyo3(get)]
     encryption_vocab_size: u32,
+    #[pyo3(get)]
+    encryption_k_rotors: u32,
     #[pyo3(get)]
     verbose: bool,
     #[pyo3(get)]
@@ -392,8 +397,8 @@ impl PyGameConfig {
         victory_points: u32,
         n_battles: u32,
         encryption_cost: u32,
-        encryption_code_len: u32,
         encryption_vocab_size: u32,
+        encryption_k_rotors: u32,
         verbose: bool,
         max_vp: u32,
         max_draw: u32,
@@ -408,8 +413,8 @@ impl PyGameConfig {
             victory_points,
             n_battles,
             encryption_cost,
-            encryption_code_len,
             encryption_vocab_size,
+            encryption_k_rotors,
             verbose,
             max_vp,
             max_draw,
@@ -442,8 +447,8 @@ impl PyGameState {
             victory_points: config_ref.victory_points,
             n_battles: config_ref.n_battles,
             encryption_cost: config_ref.encryption_cost,
-            encryption_code_len: config_ref.encryption_code_len,
             encryption_vocab_size: config_ref.encryption_vocab_size,
+            encryption_k_rotors: config_ref.encryption_k_rotors,
             verbose: config_ref.verbose,
             max_vp: config_ref.max_vp,
             max_draw: config_ref.max_draw,
@@ -559,7 +564,7 @@ impl PyGameState {
 }
 
 #[pymodule]
-fn turing_vs_scherbius(_py: Python, m: &PyModule) -> PyResult<()> {
+fn tvs_core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGameState>()?;
     m.add_class::<PyGameConfig>()?;
     Ok(())
@@ -583,8 +588,8 @@ mod tests {
             victory_points: 10,
             n_battles, 
             encryption_cost: 3,
-            encryption_code_len: 2, 
-            encryption_vocab_size: 10, 
+            encryption_vocab_size: 10,
+            encryption_k_rotors: 2,
             max_vp: 3,
             max_draw: 3,
             verbose: false,
@@ -630,7 +635,10 @@ mod tests {
             scherbius_hand: vec![10, 20, 30, 40, 50, 60], 
             turing_points: 0,
             scherbius_points: 0,
-            encoder: enigma::EasyEnigma::new(config.encryption_vocab_size, &mut rng.clone()), 
+            encoder: enigma::EasyEnigma::new(
+                config.encryption_vocab_size, 
+                config.encryption_k_rotors as usize,
+                &mut rng.clone()), 
             winner: Actor::Null,
             rng, 
             rewards: vec![Reward::VictoryPoints(2), Reward::NewCards(vec![100, 101])], 

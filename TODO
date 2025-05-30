@@ -1,6 +1,5 @@
 Core
 - add the option to use a reflector
-- generalise easyenigma to k rotors
 
 RL
 
@@ -9,3 +8,7 @@ Site
 - support playing as scherbius
 - display config variables at top
 - add tests
+
+meta search
+- we want to game to require; turing to actually codebreak, scherbius to model likelihoods and sometimes reset the encryption, 
+- 

@@ -2,7 +2,7 @@ import os
 from flask import Flask, render_template, jsonify, request
 import random
 
-import turing_vs_scherbius as tvs
+import tvs_core as tvs
 
 app = Flask(__name__)
 
@@ -11,8 +11,9 @@ GAME_CONFIG = tvs.PyGameConfig(
     turing_starting=5, turing_deal=1,
     victory_points=100, n_battles=4,
     encryption_cost=10,
-    encryption_code_len=1,
-    encryption_vocab_size=10, verbose=False,
+    encryption_vocab_size=10, 
+    encryption_k_rotors=1,
+    verbose=False,
     max_vp=10, max_draw=3,        
     max_cards_per_battle=3, max_hand_size=30
 )
@@ -42,7 +43,7 @@ def scherbius_ai_play(current_scherbius_hand, num_battles):
     # Scherbius's decision to "encrypt" might still affect how its cards are shown,
     # even if Turing can't guess. Or this can be removed if not used.
     # For now, let's assume it might still visually obscure cards.
-    encrypt = random.choice([True, False]) if GAME_CONFIG.encryption_code_len > 0 else False
+    encrypt = random.choice([True, False])
     return strategy, encrypt
 
 def prepare_round_start_data(is_new_round_for_turing=True):
@@ -93,17 +94,8 @@ def index():
 @app.route('/new_game', methods=['POST'])
 def new_game():
     global game_state
-    # Re-initialize config if encryption_code_len should be definitively zero
-    current_config = tvs.PyGameConfig(
-        scherbius_starting=GAME_CONFIG.scherbius_starting, scherbius_deal=GAME_CONFIG.scherbius_deal,
-        turing_starting=GAME_CONFIG.turing_starting, turing_deal=GAME_CONFIG.turing_deal,
-        victory_points=GAME_CONFIG.victory_points, n_battles=GAME_CONFIG.n_battles,
-        encryption_cost=GAME_CONFIG.encryption_cost, encryption_code_len=0, # Force no encryption mechanic
-        encryption_vocab_size=GAME_CONFIG.encryption_vocab_size, verbose=GAME_CONFIG.verbose,
-        max_vp=GAME_CONFIG.max_vp, max_draw=GAME_CONFIG.max_draw,
-        max_cards_per_battle=GAME_CONFIG.max_cards_per_battle, max_hand_size=GAME_CONFIG.max_hand_size
-    )
-    game_state["game_instance"] = tvs.PyGameState(current_config)
+
+    game_state["game_instance"] = tvs.PyGameState(GAME_CONFIG)
     game_state["last_round_summary"] = None
     game_state["round_history"] = []
     game_state["current_round_potential_rewards"] = None

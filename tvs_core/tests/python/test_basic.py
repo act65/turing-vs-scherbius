@@ -1,5 +1,5 @@
 import pytest
-import turing_vs_scherbius as tvs
+import tvs_core as tvs
 
 def test_game_creation():
     """Test that we can create a game with default configuration"""
@@ -11,8 +11,8 @@ def test_game_creation():
         victory_points=10,
         n_battles=3,
         encryption_cost=3,
-        encryption_code_len=2,
         encryption_vocab_size=10,
+        encryption_k_rotors=2,
         verbose=False,
         max_vp=3,
         max_draw=3,
@@ -40,8 +40,8 @@ def test_game_step():
         victory_points=10,
         n_battles=2,  # Expecting 2 battles
         encryption_cost=3,
-        encryption_code_len=2,
         encryption_vocab_size=10,
+        encryption_k_rotors=2,
         verbose=False,
         max_vp=3,
         max_draw=3,
@@ -100,8 +100,8 @@ def test_observation():
         victory_points=10,
         n_battles=3,
         encryption_cost=3,
-        encryption_code_len=2,
         encryption_vocab_size=10,
+        encryption_k_rotors=2,
         verbose=False,
         max_vp=3,
         max_draw=3,
