@@ -102,11 +102,12 @@ impl GameState {
             game_config.n_battles,
             game_config.max_vp,
             game_config.max_draw,
+            game_config.encryption_vocab_size,
             &mut rng);
 
         GameState{
-            scherbius_hand: utils::draw_cards(game_config.scherbius_starting, &mut rng),
-            turing_hand: utils::draw_cards(game_config.turing_starting, &mut rng),
+            scherbius_hand: draw_cards_for_player(Actor::Scherbius, game_config.scherbius_starting, game_config.encryption_vocab_size, &mut rng, &game_config),
+            turing_hand: draw_cards_for_player(Actor::Turing, game_config.turing_starting, game_config.encryption_vocab_size, &mut rng, &game_config),
             turing_points: 0,
             scherbius_points: 0,
             // encryption field is initialized but not clearly used later.
@@ -253,13 +254,14 @@ impl GameState {
             self.game_config.n_battles,
             self.game_config.max_vp,
             self.game_config.max_draw,
+            self.game_config.encryption_vocab_size,
             &mut self.rng,
         );
         self.rewards = next_rewards;
 
-        let scherbius_new_cards = utils::draw_cards(self.game_config.scherbius_deal, &mut self.rng);
+        let scherbius_new_cards = draw_cards_for_player(Actor::Scherbius, self.game_config.scherbius_deal, self.game_config.encryption_vocab_size, &mut self.rng, &self.game_config);
         self.scherbius_hand.extend_from_slice(&scherbius_new_cards);
-        let turing_new_cards = utils::draw_cards(self.game_config.turing_deal, &mut self.rng);
+        let turing_new_cards = draw_cards_for_player(Actor::Turing, self.game_config.turing_deal, self.game_config.encryption_vocab_size, &mut self.rng, &self.game_config);
         self.turing_hand.extend_from_slice(&turing_new_cards);
 
         if self.scherbius_hand.len() > self.game_config.max_hand_size as usize {
@@ -286,6 +288,58 @@ pub enum Actor {
     Null
 }
 
+// Helper function for player-specific card drawing logic
+fn draw_cards_for_player(
+    player: Actor,
+    n: u32,
+    m: u32,
+    rng: &mut StdRng,
+    game_config: &GameConfig
+) -> Vec<u32> {
+    if m == 0 { // Should not happen if encryption_vocab_size is always > 0
+        return Vec::new();
+    }
+    let mut cards = Vec::new();
+    match player {
+        Actor::Turing => {
+            if m == 1 {
+                // If m is 1, Turing cannot draw any cards, as only 0 would be generated.
+                // This edge case means Turing gets no cards if vocab_size is 1.
+                if game_config.verbose {
+                    println!("Turing cannot draw cards as m=1, would only generate 0s.");
+                }
+                return cards;
+            }
+            for _ in 0..n {
+                let mut card_val;
+                loop {
+                    card_val = rng.gen_range(0..m);
+                    if card_val != 0 {
+                        break;
+                    }
+                    // If card_val is 0, and m > 1, we redraw.
+                    if game_config.verbose {
+                        println!("Turing drew 0, redrawing card (m={})", m);
+                    }
+                }
+                cards.push(card_val);
+            }
+        }
+        Actor::Scherbius => {
+            // Scherbius can draw any cards, including 0.
+            cards = utils::draw_cards(n, m, rng);
+        }
+        Actor::Null => {
+            // Or handle as an error. For now, draw like Scherbius (or panic).
+            // This case should ideally not be reached if players are always Turing or Scherbius.
+            if game_config.verbose {
+                println!("Warning: draw_cards_for_player called with Actor::Null. Drawing cards like Scherbius.");
+            }
+            cards = utils::draw_cards(n, m, rng);
+        }
+    }
+    cards
+}
 
 fn battle_result(
     scherbius_cards: &Cards,
@@ -304,7 +358,7 @@ pub enum Reward {
     Null,
 }
 
-fn sample_battle_reward(max_vp: u32, max_draw: u32, rng: &mut StdRng) -> Reward {
+fn sample_battle_reward(max_vp: u32, max_draw: u32, encryption_vocab_size: u32, rng: &mut StdRng) -> Reward {
     match rng.gen_range(0..2) { // 0 for VP, 1 for NewCards
         0 => {
             if max_vp == 0 {
@@ -319,15 +373,15 @@ fn sample_battle_reward(max_vp: u32, max_draw: u32, rng: &mut StdRng) -> Reward 
                 Reward::NewCards(Vec::new()) // Or Reward::Null
             } else {
                 let num_cards = rng.gen_range(1..=max_draw);
-                Reward::NewCards(utils::draw_cards(num_cards, rng))
+                Reward::NewCards(utils::draw_cards(num_cards, encryption_vocab_size, rng))
             }
         }
         _ => unreachable!("rng.gen_range(0..2) should only produce 0 or 1"),
     }
 }
 
-fn random_rewards(n: u32, max_vp: u32, max_draw: u32, rng: &mut StdRng)->Vec<Reward> {
-    (0..n).map(|_| sample_battle_reward(max_vp, max_draw, rng)).collect()
+fn random_rewards(n: u32, max_vp: u32, max_draw: u32, encryption_vocab_size: u32, rng: &mut StdRng)->Vec<Reward> {
+    (0..n).map(|_| sample_battle_reward(max_vp, max_draw, encryption_vocab_size, rng)).collect()
 }
 
 #[derive(Debug, Clone)]
@@ -611,6 +665,7 @@ mod tests {
         assert_eq!(game.rewards.len(), config.n_battles as usize);
         assert_eq!(game.game_config.max_hand_size, 10);
         assert_eq!(game.game_config.max_cards_per_battle, 5);
+        assert!(game.turing_hand.iter().all(|&card| card != 0), "Turing's initial hand should not contain 0s");
     }
 
     #[test]
@@ -675,6 +730,7 @@ mod tests {
 
         assert!(game.scherbius_hand.len() <= max_hand_size as usize, "Scherbius hand size exceeds max");
         assert!(game.turing_hand.len() <= max_hand_size as usize, "Turing hand size exceeds max");
+        assert!(game.turing_hand.iter().all(|&card| card != 0), "Turing's hand after step should not contain 0s from dealing");
     }
 
     #[test]
@@ -697,6 +753,7 @@ mod tests {
 
         assert_eq!(game.scherbius_hand.len(), max_hand_size as usize, "Scherbius hand not truncated");
         assert_eq!(game.turing_hand.len(), max_hand_size as usize, "Turing hand not truncated");
+        assert!(game.turing_hand.iter().all(|&card| card != 0), "Turing's hand after truncation step should not contain 0s");
     }
 
     #[test]
@@ -776,6 +833,8 @@ mod tests {
         assert_eq!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should be identical");
         assert_eq!(game1.rewards, game2.rewards, "Rewards lists should be identical");
         assert_eq!(game1.encoder.get_rotor_wirings(), game2.encoder.get_rotor_wirings(), "Enigma rotors should be identical");
+        assert!(game1.turing_hand.iter().all(|&card| card != 0), "Game1: Turing's hand should not contain 0s");
+        assert!(game2.turing_hand.iter().all(|&card| card != 0), "Game2: Turing's hand should not contain 0s");
     }
 
     #[test]
@@ -791,6 +850,8 @@ mod tests {
 
         assert_ne!(game1.turing_hand, game2.turing_hand, "Turing hands should differ (highly probable)");
         assert_ne!(game1.scherbius_hand, game2.scherbius_hand, "Scherbius hands should differ (highly probable)");
+        assert!(game1.turing_hand.iter().all(|&card| card != 0), "Game1: Turing's hand should not contain 0s");
+        assert!(game2.turing_hand.iter().all(|&card| card != 0), "Game2: Turing's hand should not contain 0s");
 
         if game1.rewards.len() == game2.rewards.len() {
             let rewards_match = game1.rewards.iter().zip(game2.rewards.iter()).all(|(r1, r2)| r1 == r2);
@@ -811,5 +872,142 @@ mod tests {
         assert_eq!(game.turing_points, 0, "Initial Turing points should be 0");
         assert_eq!(game.scherbius_points, 0, "Initial Scherbius points should be 0");
         assert_eq!(game.winner, Actor::Null, "Initial winner should be Null");
+        assert!(game.turing_hand.iter().all(|&card| card != 0), "Turing's hand should not contain 0s");
+    }
+
+    #[test]
+    fn test_turing_never_draws_zero_cards_initial_deal() {
+        let config_template = create_test_config(1, 20, 5); // Base config
+        let config = Arc::new(GameConfig {
+            encryption_vocab_size: 10, // Ensure vocab size > 1
+            turing_starting: 10, // Ensure Turing gets cards
+            ..(*config_template).clone()
+        });
+
+        for i in 0..50 {
+            let game = GameState::new(Arc::clone(&config), Some(i as u64));
+            assert!(game.turing_hand.iter().all(|&card| card != 0),
+                "Turing's initial hand contains 0 with seed {} and vocab_size {}", i, config.encryption_vocab_size);
+        }
+    }
+
+    #[test]
+    fn test_turing_never_draws_zero_cards_during_step() {
+        let config_template = create_test_config(1, 20, 1);
+        let config = Arc::new(GameConfig {
+            encryption_vocab_size: 10, // Vocab size > 1
+            turing_starting: 1,    // Start with 1 card to play
+            scherbius_starting: 1, // Start with 1 card to play
+            turing_deal: 5,        // Turing gets 5 new cards
+            scherbius_deal: 0,
+            max_draw: 0, // No card rewards
+            max_vp: 1, // VP rewards only
+            verbose: false,
+            ..(*config_template).clone()
+        });
+
+        for i in 0..20 {
+            let mut game = GameState::new(Arc::clone(&config), Some(i as u64));
+
+            assert!(game.turing_hand.iter().all(|&c| c != 0), "Initial Turing hand for step test contains 0 with seed {}", i);
+            assert!(!game.turing_hand.is_empty(), "Turing hand should not be empty for strategy");
+            assert!(!game.scherbius_hand.is_empty(), "Scherbius hand should not be empty for strategy");
+
+
+            let turing_card_to_play = game.turing_hand[0];
+            let scherbius_card_to_play = game.scherbius_hand[0];
+
+            let turing_action = TuringAction { strategy: vec![vec![turing_card_to_play]] };
+            let scherbius_action = ScherbiusAction { strategy: vec![vec![scherbius_card_to_play]], encryption: false };
+
+            let step_result = game.step(&scherbius_action, &turing_action);
+            assert!(step_result.is_ok(), "Step failed with seed {}: {:?}", i, step_result.err());
+
+            let final_turing_hand = game.turing_hand();
+            assert!(final_turing_hand.iter().all(|&card| card != 0),
+                "Turing's hand contains 0 after step deal with seed {}. Hand: {:?}", i, final_turing_hand);
+        }
+    }
+
+    #[test]
+    fn test_player_drawing_with_vocab_size_one() {
+        let config_template = create_test_config(1, 10, 1); // n_battles = 1, max_cards_per_battle = 1
+        let config_initial_deal = Arc::new(GameConfig {
+            encryption_vocab_size: 1,
+            turing_starting: 5,
+            scherbius_starting: 5,
+            turing_deal: 0, // No deal in this part
+            scherbius_deal: 0, // No deal in this part
+            max_draw: 0,
+            max_vp: 1,
+            verbose: false,
+            ..(*config_template).clone()
+        });
+
+        let game_initial = GameState::new(Arc::clone(&config_initial_deal), Some(0));
+        assert!(game_initial.turing_hand.is_empty(), "Turing's initial hand should be empty when m=1 and turing_starting > 0");
+        assert!(game_initial.scherbius_hand.iter().all(|&card| card == 0), "Scherbius's initial hand should be all 0s when m=1 and scherbius_starting > 0");
+        if config_initial_deal.scherbius_starting > 0 {
+           assert_eq!(game_initial.scherbius_hand.len(), config_initial_deal.scherbius_starting as usize);
+        }
+
+        // Test step logic
+        let config_step = Arc::new(GameConfig {
+            encryption_vocab_size: 1,
+            n_battles: 1,
+            scherbius_starting: 1,
+            turing_starting: 0,    // Turing starts with no cards (as m=1 makes initial draw empty)
+            scherbius_deal: 3,
+            turing_deal: 3,
+            max_cards_per_battle: 1,
+            max_draw: 0,
+            max_vp: 1,
+            verbose: false,
+            ..(*config_template).clone()
+        });
+
+        let mut game_step = GameState::new(Arc::clone(&config_step), Some(1));
+        assert!(game_step.turing_hand.is_empty(), "Turing hand empty at start of step test with m=1");
+        assert_eq!(game_step.scherbius_hand, vec![0], "Scherbius should have one 0 card for step test with m=1");
+
+        let turing_action = TuringAction { strategy: vec![vec![]] };
+        let scherbius_action = ScherbiusAction { strategy: vec![vec![game_step.scherbius_hand[0]]], encryption: false };
+
+        let step_result = game_step.step(&scherbius_action, &turing_action);
+        assert!(step_result.is_ok(), "Step failed for m=1 test: {:?}", step_result.err());
+
+        assert!(game_step.turing_hand.is_empty(), "Turing's hand should remain empty after dealing when m=1");
+
+        // Scherbius played 1 card (hand becomes empty), then dealt 3 cards (all 0s).
+        let expected_scherbius_len = (0 + config_step.scherbius_deal).min(config_step.max_hand_size);
+        assert!(game_step.scherbius_hand.iter().all(|&card| card == 0), "Scherbius's hand should only contain 0s after dealing when m=1");
+        assert_eq!(game_step.scherbius_hand.len(), expected_scherbius_len as usize, "Scherbius hand length after deal with m=1");
+    }
+
+    #[test]
+    fn test_scherbius_can_draw_zeros_general() {
+        let config_template = create_test_config(1, 30, 1);
+        let config = Arc::new(GameConfig {
+            encryption_vocab_size: 2, // Cards can be 0 or 1
+            scherbius_starting: 25, // Draw many cards to increase chance of 0
+            turing_starting: 0,
+            scherbius_deal: 0,
+            turing_deal: 0,
+            verbose: false,
+            ..(*config_template).clone()
+        });
+
+        let mut found_zero_for_scherbius = false;
+        for i in 0..50 {
+            let game = GameState::new(Arc::clone(&config), Some(i as u64));
+            if game.scherbius_hand.iter().any(|&card| card == 0) {
+                found_zero_for_scherbius = true;
+                break;
+            }
+        }
+        let last_game_scherbius_hand_for_debug = GameState::new(Arc::clone(&config), Some(49)).scherbius_hand;
+        assert!(found_zero_for_scherbius,
+            "Scherbius should be able to draw 0s with m={} over several attempts. Last hand example: {:?}",
+            config.encryption_vocab_size, last_game_scherbius_hand_for_debug);
     }
 }

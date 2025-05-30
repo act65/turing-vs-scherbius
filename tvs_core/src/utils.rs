@@ -9,11 +9,20 @@ type Cards = Vec<u32>;
 
 use std::io;
 
-pub fn draw_cards(n: u32, rng: &mut StdRng) -> Cards {
+// MODIFIED: Added m: u32 parameter and changed gen_range
+pub fn draw_cards(n: u32, m: u32, rng: &mut StdRng) -> Cards {
     let mut cards = Vec::new();
 
+    // Ensure m is greater than 0 to avoid panic in gen_range(0..0)
+    if m == 0 {
+        // Or handle this case as an error, or return empty cards, etc.
+        // For now, let's assume m is always > 0 based on typical vocab size.
+        // If m could be 0, this needs specific error handling or clarification.
+        return cards; // Return empty if m is 0, preventing panic.
+    }
+
     for _ in 0..n {
-        let value: u32 = rng.gen_range(1..11);
+        let value: u32 = rng.gen_range(0..m); // MODIFIED: Use m for upper bound
         cards.push(value)
     }
     cards
@@ -177,13 +186,25 @@ mod tests {
     fn test_draw_cards() {
         let seed = [0u8; 32];
         let mut rng = StdRng::from_seed(seed);
+        let m = 10; // Example vocab size
         
-        let cards = draw_cards(5, &mut rng);
+        let cards = draw_cards(5, m, &mut rng); // MODIFIED: Pass m
         assert_eq!(cards.len(), 5);
         
-        // All cards should be in range 1-10
+        // All cards should be in range 0..m (exclusive of m)
         for card in cards {
-            assert!(card >= 1 && card <= 10);
+            assert!(card < m); // MODIFIED: Check card value is less than m
+        }
+
+        // Test with m = 0
+        let cards_m0 = draw_cards(5, 0, &mut rng);
+        assert_eq!(cards_m0.len(), 0, "Should return empty vec if m is 0");
+
+        // Test with m = 1 (should only draw 0s)
+        let cards_m1 = draw_cards(5, 1, &mut rng);
+        assert_eq!(cards_m1.len(), 5);
+        for card_val in cards_m1 {
+            assert_eq!(card_val, 0, "Cards should be 0 if m is 1");
         }
     }
 
