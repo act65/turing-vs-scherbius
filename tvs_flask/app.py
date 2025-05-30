@@ -55,8 +55,15 @@ def prepare_round_start_data(is_new_round_for_turing=True):
     game_state["scherbius_planned_strategy"] = s_strategy
     game_state["scherbius_planned_encryption"] = s_encrypts
 
-    turing_hand_values, intercepted_plays = game.turing_observation(s_strategy)
-    game_state["turing_observed_scherbius_plays"] = intercepted_plays
+    turing_hand_values, intercepted_plays_from_rust = game.turing_observation(s_strategy)
+    
+    if game_state["scherbius_planned_encryption"]:
+        obscured_plays = []
+        for battle_cards in intercepted_plays_from_rust:
+            obscured_plays.append(['X' for _ in battle_cards])
+        game_state["turing_observed_scherbius_plays"] = obscured_plays
+    else:
+        game_state["turing_observed_scherbius_plays"] = intercepted_plays_from_rust
     
     if is_new_round_for_turing:
         game_state["initial_turing_hand_for_turn"] = [
@@ -70,8 +77,8 @@ def prepare_round_start_data(is_new_round_for_turing=True):
 
     client_data = {
         "turing_hand": game_state["initial_turing_hand_for_turn"],
-        "scherbius_observed_plays": intercepted_plays,
-        "scherbius_did_encrypt": s_encrypts, # Still sent for display consistency
+        "scherbius_observed_plays": game_state["turing_observed_scherbius_plays"],
+        "scherbius_did_encrypt": game_state["scherbius_planned_encryption"], # Use from game_state for consistency
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards},
         "turing_points": game.turing_points(),
         "max_victory_points": GAME_CONFIG.victory_points,
