@@ -1,4 +1,4 @@
-use std::fmt;
+
 use std::cmp::Ordering;
 use std::iter::zip;
 use rand::{
@@ -628,7 +628,7 @@ mod tests {
         let config = create_test_config(n_battles, max_hand_size, max_cards_per_battle);
 
         let seed = [0u8; 32]; 
-        let mut rng = StdRng::from_seed(seed);
+        let rng = StdRng::from_seed(seed);
 
         let mut game = GameState {
             turing_hand: vec![1, 2, 3, 4, 5, 6], 

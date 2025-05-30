@@ -1,10 +1,8 @@
 use rand::{
-    Rng,
-    rngs::ThreadRng,
-    thread_rng
+    Rng
 };
 use rand::rngs::StdRng;
-use rand::SeedableRng;
+
 use rand::seq::SliceRandom;
 
 type Cards = Vec<u32>;
@@ -161,7 +159,7 @@ mod tests {
     // use rand::thread_rng; // No longer needed directly in most tests after refactor
     use rand::rngs::StdRng;
     use rand::SeedableRng;
-    use rand::Rng; // For gen_range, gen_bool if used directly in tests
+     // For gen_range, gen_bool if used directly in tests
 
     #[test]
     fn test_sample_random_ints() {
