@@ -3,15 +3,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const turingScoreEl = document.getElementById('turingScore');
     const scherbiusScoreEl = document.getElementById('scherbiusScore');
-    const maxVictoryPointsEl = document.getElementById('maxVictoryPoints');
+    // const maxVictoryPointsEl = document.getElementById('maxVictoryPoints'); // Replaced by configVictoryPointsEl
     const winnerEl = document.getElementById('winner');
     const newGameBtn = document.getElementById('newGameBtn');
     const submitTuringActionBtn = document.getElementById('submitTuringActionBtn');
     const gameAreaEl = document.getElementById('gameArea');
     const gameOverMessageEl = document.getElementById('gameOverMessage');
     const rewardsDisplayEl = document.getElementById('rewardsDisplay');
-    const turingHandEl = document.getElementById('turingHand');
+    const playerHandEl = document.getElementById('turingHand'); // Renamed JS variable, HTML ID is still 'turingHand'
+    const playerHandAreaEl = document.getElementById('turingHandArea'); // Get the container for the hand
+    const playerHandTitleEl = playerHandAreaEl.querySelector('h3'); // Get the h3 title within the hand area
     const battleZoneTitleEl = document.getElementById('battleZoneTitle');
+
+    // New elements for Scherbius role
+    const newGameAsScherbiusBtn = document.getElementById('newGameAsScherbiusBtn');
+    const submitScherbiusActionBtn = document.getElementById('submitScherbiusActionBtn');
+    const scherbiusEncryptCheckbox = document.getElementById('scherbiusEncryptCheckbox');
+    const scherbiusSpecificControlsEl = document.getElementById('scherbiusSpecificControls');
+
+    // Game Config Display Elements
+    const configVictoryPointsEl = document.getElementById('configVictoryPoints');
+    const configNBattlesEl = document.getElementById('configNBattles');
+    const configMaxCardsPerBattleEl = document.getElementById('configMaxCardsPerBattle');
+    const configMaxHandSizeEl = document.getElementById('configMaxHandSize');
+    const configScherbiusStartingEl = document.getElementById('configScherbiusStarting');
+    const configScherbiusDealEl = document.getElementById('configScherbiusDeal');
+    const configTuringStartingEl = document.getElementById('configTuringStarting');
+    const configTuringDealEl = document.getElementById('configTuringDeal');
+    const configEncryptionCostEl = document.getElementById('configEncryptionCost');
+    const configEncryptionVocabSizeEl = document.getElementById('configEncryptionVocabSize');
+    const configMaxDrawEl = document.getElementById('configMaxDraw');
+    const configMaxVPEl = document.getElementById('configMaxVP');
 
     // --- DOM Elements for Historical View ---
     const historicalRoundViewAreaEl = document.getElementById('historicalRoundViewArea');
@@ -47,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
             }
             const state = await response.json();
-
+            clientState.latestServerState = state; // Store the latest complete server state
             updateGlobalUI(state, endpoint); // Pass endpoint to UI updater
         } catch (error) {
             console.error(`API Error (${endpoint}):`, error);
@@ -61,13 +83,26 @@ document.addEventListener('DOMContentLoaded', () => {
         gameAreaEl.style.display = 'block';
 
         turingScoreEl.textContent = serverState.turing_points;
-        scherbiusScoreEl.textContent = "???";
-        maxVictoryPointsEl.textContent = serverState.max_victory_points;
+        scherbiusScoreEl.textContent = serverState.scherbius_points; // Updated: server will send "???" or actual score
+
+        // Update Game Config Display
+        configVictoryPointsEl.textContent = serverState.config_victory_points;
+        configNBattlesEl.textContent = serverState.config_n_battles;
+        configMaxCardsPerBattleEl.textContent = serverState.config_max_cards_per_battle;
+        configMaxHandSizeEl.textContent = serverState.config_max_hand_size;
+        configScherbiusStartingEl.textContent = serverState.config_scherbius_starting;
+        configScherbiusDealEl.textContent = serverState.config_scherbius_deal;
+        configTuringStartingEl.textContent = serverState.config_turing_starting;
+        configTuringDealEl.textContent = serverState.config_turing_deal;
+        configEncryptionCostEl.textContent = serverState.config_encryption_cost;
+        configEncryptionVocabSizeEl.textContent = serverState.config_encryption_vocab_size;
+        configMaxDrawEl.textContent = serverState.config_max_draw;
+        configMaxVPEl.textContent = serverState.config_max_vp;
         
-        clientState.nBattles = serverState.n_battles;
-        clientState.maxCardsPerBattle = serverState.max_cards_per_battle;
+        clientState.nBattles = serverState.config_n_battles; // Update clientState from config
+        clientState.maxCardsPerBattle = serverState.config_max_cards_per_battle; // Update clientState from config
         clientState.roundHistory = serverState.round_history || [];
-        clientState.latestServerState = serverState; // Store the latest complete server state
+        // clientState.latestServerState = serverState; // Already set in fetchApi
 
         const newRoundHistoryLength = clientState.roundHistory.length;
 
@@ -80,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); // Should be 0
             }
         } else { // Game not over
-            if (endpointCalled === '/submit_turing_action' && newRoundHistoryLength > 0) {
+            if ((endpointCalled === '/submit_turing_action' || endpointCalled === '/submit_scherbius_action') && newRoundHistoryLength > 0) {
                 // After submitting an action, view the results of the round that was just completed
                 clientState.currentHistoryViewIndex = newRoundHistoryLength - 1;
             } else {
@@ -90,8 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Reset hand and battle plays only if viewing the current round's setup phase
-        if (serverState.current_phase === "Turing_Action" && clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX()) {
-            clientState.initialHandForTurn = [...(serverState.turing_hand || [])]; 
+        // and it's the player's action phase (Turing_Action or Scherbius_Action)
+        const playerActionPhase = serverState.player_role === "Turing" ? "Turing_Action" : "Scherbius_Action";
+        if (serverState.current_phase === playerActionPhase && clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX() && !serverState.is_game_over) {
+            clientState.initialHandForTurn = [...(serverState.player_hand || [])]; // Updated: use serverState.player_hand
             clientState.battlePlays = {};
             for(let i=0; i < clientState.nBattles; i++) clientState.battlePlays[`battle_${i}`] = [];
         }
@@ -163,9 +200,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         clientState.currentHandDisplayObjects = cardsEffectivelyInHandObjects;
 
-        turingHandEl.innerHTML = '';
+        playerHandEl.innerHTML = ''; // Use playerHandEl
         clientState.currentHandDisplayObjects.forEach(cardObj => {
-            turingHandEl.appendChild(createCardElement(cardObj, 'hand', 'turingHand'));
+            playerHandEl.appendChild(createCardElement(cardObj, 'hand', playerHandEl.id)); // Use playerHandEl.id
         });
 
         for (let i = 0; i < clientState.nBattles; i++) {
@@ -296,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    addDropListenersToElement(turingHandEl, true);
+    addDropListenersToElement(playerHandEl, true); // Use playerHandEl
 
 
     // --- Main Battle Display (Unified for Current and Historical) ---
@@ -312,7 +349,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxCardsPerBattleForDisplay = clientState.maxCardsPerBattle; // Use current game setting for slots
 
             const currentRewards = serverOrFullStateData.rewards;
-            const currentScherbiusObserved = serverOrFullStateData.scherbius_observed_plays;
+            // const currentScherbiusObserved = serverOrFullStateData.scherbius_observed_plays; // Replaced
+            const opponentObservedPlays = serverOrFullStateData.opponent_observed_plays; // Use new field
+            const playerRole = serverOrFullStateData.player_role;
 
             for (let i = 0; i < numBattlesToDisplay; i++) {
                 const battleId = `battle_${i}`;
@@ -342,19 +381,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 rewardInfoHTML += `</div>`;
 
-                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`;
-                const scherbiusPlayForBattle = (currentScherbiusObserved && currentScherbiusObserved[i]) ? currentScherbiusObserved[i] : [];
-                let scherbiusCardsContent = '<div class="display-card-container">';
-                if (scherbiusPlayForBattle.length > 0) {
-                    scherbiusPlayForBattle.forEach(cardVal => {
+                let opponentInfoHTML = `<div class="opponent-observed-info">`; // Changed class name for clarity
+                const opponentPlayForBattle = (opponentObservedPlays && opponentObservedPlays[i]) ? opponentObservedPlays[i] : [];
+                let opponentCardsContent = '<div class="display-card-container">';
+                if (opponentPlayForBattle.length > 0) {
+                    opponentPlayForBattle.forEach(cardVal => {
                         const cardEl = document.createElement('div');
-                        cardEl.classList.add('display-card', 'scherbius-card');
+                        // Add a class based on who the opponent is, for potential styling
+                        cardEl.classList.add('display-card', playerRole === "Turing" ? 'scherbius-card' : 'turing-card');
                         cardEl.textContent = cardVal;
-                        scherbiusCardsContent += cardEl.outerHTML;
+                        opponentCardsContent += cardEl.outerHTML;
                     });
                 }
-                scherbiusCardsContent += '</div>';
-                scherbiusInfoHTML += `<p>Scherbius Will Play: ${scherbiusCardsContent}</p></div>`;
+                opponentCardsContent += '</div>';
+                const opponentName = playerRole === "Turing" ? "Scherbius" : "Turing";
+                opponentInfoHTML += `<p>${opponentName} Will Play: ${opponentCardsContent}</p></div>`;
 
                 const turingPlayedCardsArea = document.createElement('div');
                 turingPlayedCardsArea.classList.add('turing-played-cards-area');
@@ -368,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     turingPlayedCardsArea.appendChild(slotDiv);
                 }
                 
-                battleDiv.innerHTML = rewardInfoHTML + scherbiusInfoHTML;
+                battleDiv.innerHTML = rewardInfoHTML + opponentInfoHTML; // Use opponentInfoHTML
                 battleDiv.appendChild(turingPlayedCardsArea);
                 rewardsDisplayEl.appendChild(battleDiv);
             }
@@ -460,6 +501,11 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchApi('/new_game', 'POST');
     });
 
+    newGameAsScherbiusBtn.addEventListener('click', () => {
+        gameOverMessageEl.style.display = 'none';
+        fetchApi('/new_game', 'POST', { player_role: "Scherbius" });
+    });
+
     submitTuringActionBtn.addEventListener('click', () => {
         const finalTuringStrategyValues = [];
         for (let i = 0; i < clientState.nBattles; i++) {
@@ -477,6 +523,25 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchApi('/submit_turing_action', 'POST', payload);
     });
 
+    submitScherbiusActionBtn.addEventListener('click', () => {
+        const finalPlayerStrategyValues = [];
+        for (let i = 0; i < clientState.nBattles; i++) {
+            const battleId = `battle_${i}`;
+            const cardsInBattle = clientState.battlePlays[battleId] || [];
+            finalPlayerStrategyValues.push(cardsInBattle.map(cardObj => {
+                return cardObj.value === 'X' ? 'X' : parseInt(cardObj.value);
+            }));
+        }
+
+        const encryptChoice = scherbiusEncryptCheckbox.checked;
+        const payload = {
+            scherbius_strategy: finalPlayerStrategyValues,
+            scherbius_encrypts: encryptChoice
+        };
+        console.log("Submitting Scherbius action to backend (values):", payload);
+        fetchApi('/submit_scherbius_action', 'POST', payload);
+    });
+
     // --- Initial Setup ---
     gameAreaEl.style.display = 'none';
     gameOverMessageEl.style.display = 'none';
@@ -488,26 +553,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- UI State Management for Current vs. Historical View ---
     function manageRoundViewSpecificUI() {
         const isViewingCurrent = clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX();
-        // Default to true for isGameOver if latestServerState is null, to be safe (e.g. disable buttons initially)
-        const isGameOver = clientState.latestServerState ? clientState.latestServerState.is_game_over : true; 
-        const isTuringActionPhase = clientState.latestServerState ? clientState.latestServerState.current_phase === "Turing_Action" : false;
+        const isGameOver = clientState.latestServerState ? clientState.latestServerState.is_game_over : true;
 
-        // Show Turing's hand and action controls only if:
-        // 1. Viewing the current round's setup (not a past round summary)
-        // 2. It's actually Turing's action phase
-        // 3. The game is not over
-        const showTuringControls = isViewingCurrent && isTuringActionPhase && !isGameOver;
+        let playerRole = "Turing"; // Default
+        let currentPhase = ""; // Default
+        if (clientState.latestServerState) {
+            playerRole = clientState.latestServerState.player_role;
+            currentPhase = clientState.latestServerState.current_phase;
+        } else {
+            // If no server state, effectively treat as game over for UI disabling
+            isGameOver = true;
+        }
 
-        const turingHandArea = document.getElementById('turingHandArea');
-        const turingActionControlsTitle = document.getElementById('turingActionControls').querySelector('h3');
+        const showTuringControls = isViewingCurrent && playerRole === "Turing" && currentPhase === "Turing_Action" && !isGameOver;
+        const showScherbiusControls = isViewingCurrent && playerRole === "Scherbius" && currentPhase === "Scherbius_Action" && !isGameOver;
 
-        if (turingHandArea) turingHandArea.style.display = showTuringControls ? 'block' : 'none';
-        if (turingActionControlsTitle) turingActionControlsTitle.style.display = showTuringControls ? 'block' : 'none';
-        turingHandEl.style.display = showTuringControls ? 'flex' : 'none';
+        // Player Hand Area Visibility and Title (using playerHandAreaEl and playerHandTitleEl defined earlier)
+        const showPlayerHandArea = showTuringControls || showScherbiusControls;
+        if (playerHandAreaEl) playerHandAreaEl.style.display = showPlayerHandArea ? 'block' : 'none';
+        if (playerHandEl) playerHandEl.style.display = showPlayerHandArea ? 'flex' : 'none'; // playerHandEl is the cards container
         
-        submitTuringActionBtn.style.display = showTuringControls ? 'block' : 'none';
-        submitTuringActionBtn.disabled = !showTuringControls;
+        if (playerHandTitleEl) {
+            if (showPlayerHandArea) {
+                playerHandTitleEl.textContent = playerRole === "Turing" ? "Your Hand (Turing):" : "Your Hand (Scherbius):";
+                playerHandTitleEl.style.display = 'block';
+            } else {
+                playerHandTitleEl.style.display = 'none';
+            }
+        }
+
+        // Submit Buttons & Scherbius Encrypt Checkbox Visibility
+        if (submitTuringActionBtn) {
+            submitTuringActionBtn.style.display = showTuringControls ? 'block' : 'none';
+            submitTuringActionBtn.disabled = !showTuringControls;
+        }
+
+        if (scherbiusSpecificControlsEl) {
+            scherbiusSpecificControlsEl.style.display = showScherbiusControls ? 'block' : 'none';
+        }
+        if (submitScherbiusActionBtn) { // submitScherbiusActionBtn is inside scherbiusSpecificControlsEl
+            submitScherbiusActionBtn.disabled = !showScherbiusControls;
+        }
         
+        // General game area visibility
         gameAreaEl.style.display = clientState.latestServerState ? 'block' : 'none'; 
         historicalRoundViewAreaEl.style.display = clientState.latestServerState ? 'block' : 'none';
     }
@@ -552,12 +640,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // **BUG FIX STARTS HERE**
             // If we are now viewing the current round's action phase,
             // ensure the hand and battle plays are reset for the new turn.
+            const latestPlayerActionPhase = clientState.latestServerState.player_role === "Turing" ? "Turing_Action" : "Scherbius_Action";
             if (clientState.currentHistoryViewIndex === VIEWING_CURRENT_ROUND_INDEX() &&
                 clientState.latestServerState &&
-                clientState.latestServerState.current_phase === "Turing_Action") {
+                clientState.latestServerState.current_phase === latestPlayerActionPhase && !clientState.latestServerState.is_game_over) {
                 
                 // Re-initialize hand from the latest server state for the new turn
-                clientState.initialHandForTurn = [...(clientState.latestServerState.turing_hand || [])];
+                clientState.initialHandForTurn = [...(clientState.latestServerState.player_hand || [])]; // Updated: use player_hand
                 
                 // nBattles and maxCardsPerBattle should already be up-to-date in clientState
                 // from the last updateGlobalUI call, reflecting the current round's parameters.

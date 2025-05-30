@@ -12,13 +12,29 @@
 
         <div class="game-controls">
             <button id="newGameBtn">New Game</button>
+            <button id="newGameAsScherbiusBtn">New Game (as Scherbius)</button>
         </div>
 
         <div class="scores-summary-box">
-            <h2>Game Status</h2>
+            <h2>Game Status & Config</h2>
             <p>Turing Points: <span id="turingScore">0</span></p>
             <p>Scherbius Points: <span id="scherbiusScore">???</span></p>
-            <p>Points required for Victory: <span id="maxVictoryPoints">N/A</span></p>
+            <p>Points for Victory: <span id="configVictoryPoints">N/A</span></p>
+            <p>Battles per Round: <span id="configNBattles">N/A</span></p>
+            <p>Max Cards per Battle: <span id="configMaxCardsPerBattle">N/A</span></p>
+            <p>Max Hand Size: <span id="configMaxHandSize">N/A</span></p>
+            <hr>
+            <p>Scherbius Starting Cards: <span id="configScherbiusStarting">N/A</span></p>
+            <p>Scherbius Deal per Round: <span id="configScherbiusDeal">N/A</span></p>
+            <p>Turing Starting Cards: <span id="configTuringStarting">N/A</span></p>
+            <p>Turing Deal per Round: <span id="configTuringDeal">N/A</span></p>
+            <hr>
+            <p>Encryption Cost (VP): <span id="configEncryptionCost">N/A</span></p>
+            <p>Encryption Vocab Size: <span id="configEncryptionVocabSize">N/A</span></p>
+            <!-- <p>Encryption Code Length: <span id="configEncryptionKRotors">N/A</span></p> -->
+            <hr>
+            <p>Max Card Draw (per Reward): <span id="configMaxDraw">N/A</span></p>
+            <p>Max VP (per Battle Reward): <span id="configMaxVP">N/A</span></p>
         </div>
 
         <!-- LastRoundSummaryArea was removed as requested -->
@@ -52,6 +68,12 @@
                     <div id="turingHand" class="card-source"></div>
                 </div>
                 <button id="submitTuringActionBtn" style="display:none;">Submit Actions</button> <!-- Initially hidden -->
+
+                <div id="scherbiusSpecificControls" style="display:none;">
+                    <input type="checkbox" id="scherbiusEncryptCheckbox">
+                    <label for="scherbiusEncryptCheckbox">Encrypt Communications?</label>
+                    <button id="submitScherbiusActionBtn">Submit Scherbius Action</button>
+                </div>
             </div>
         </div>
         
