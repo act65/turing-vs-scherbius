@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 import random
 import tvs_core as tvs
-from utils import GameManager
+from manager import GameManager
 
 # --- Game Configuration ---
 GAME_CONFIG = tvs.PyGameConfig(
