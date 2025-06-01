@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
         roundHistory: [],
         currentHistoryViewIndex: 0,
         latestServerState: null,
-        // scherbiusPlayerEncryptionChoice: false // Removed, use scherbiusEncryptCheckbox.checked directly
     };
     const VIEWING_CURRENT_ROUND_INDEX = () => clientState.roundHistory.length;
 
@@ -108,14 +107,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (serverState.is_game_over) {
             if (newRoundHistoryLength > 0) {
                 clientState.currentHistoryViewIndex = newRoundHistoryLength - 1;
-            } else { // Game over on first round (unlikely but handle)
-                clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); // which would be 0
+            } else { 
+                clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX(); 
             }
         } else {
-            // If action submitted, view the round just played (now historical)
             if (endpointCalled === '/submit_player_action' && newRoundHistoryLength > 0) {
                 clientState.currentHistoryViewIndex = newRoundHistoryLength - 1;
-            } else { // Otherwise, view current round setup
+            } else { 
                 clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
             }
         }
@@ -146,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Card Rendering and D&D ---
-    function createCardElement(cardObject, originType, originId, originSlotIndex = null) {
+    function createCardElement(cardObject, originType, originId, originSlotIndex = null, playerContext = null) {
         const cardDiv = document.createElement('div');
         cardDiv.classList.add('card');
         cardDiv.textContent = cardObject.value;
@@ -158,6 +156,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (originSlotIndex !== null) {
             cardDiv.dataset.originSlotIndex = originSlotIndex;
         }
+
+        // Add player-specific class for styling based on who owns/plays the card
+        if (playerContext === 'Turing') {
+            cardDiv.classList.add('turing-card-ingame');
+        } else if (playerContext === 'Scherbius') {
+            cardDiv.classList.add('scherbius-card-ingame');
+        }
+
 
         cardDiv.addEventListener('dragstart', (e) => {
             const isActivePlayerTurn = (clientState.playerRole === "Turing" && clientState.latestServerState.current_phase === "Turing_Action") ||
@@ -198,8 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderAllPlayableCardAreas() {
         const currentPlayerHandEl = getCurrentPlayerHandEl();
-        if (!currentPlayerHandEl) { // Role not set or element not found
-            // console.warn("Current player hand element not available for rendering.");
+        if (!currentPlayerHandEl) {
             return;
         }
 
@@ -214,7 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPlayerHandEl.innerHTML = '';
         const handOriginId = clientState.playerRole === 'Turing' ? 'turingHand' : 'scherbiusHand';
         clientState.currentHandDisplayObjects.forEach(cardObj => {
-            currentPlayerHandEl.appendChild(createCardElement(cardObj, 'hand', handOriginId));
+            // Pass playerRole to identify the card's owner for styling
+            currentPlayerHandEl.appendChild(createCardElement(cardObj, 'hand', handOriginId, null, clientState.playerRole));
         });
 
         for (let i = 0; i < clientState.nBattles; i++) {
@@ -227,7 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cardsInThisBattle = clientState.battlePlays[battleId] || [];
                 cardsInThisBattle.forEach((cardObj, slotIndex) => {
                     if (cardObj && slotIndex < slots.length) {
-                        slots[slotIndex].appendChild(createCardElement(cardObj, 'battleSlot', battleId, slotIndex));
+                        // Pass playerRole to identify the card's owner for styling
+                        slots[slotIndex].appendChild(createCardElement(cardObj, 'battleSlot', battleId, slotIndex, clientState.playerRole));
                     }
                 });
             }
@@ -347,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // Add drop listeners to both player hand areas
     addDropListenersToElement(turingHandEl, true);
     addDropListenersToElement(scherbiusHandEl, true);
 
@@ -400,17 +406,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 let opponentInfoHTML = `<div class="opponent-observed-info">`;
                 const opponentPlayForBattle = (opponentObservedPlays && opponentObservedPlays[i]) ? opponentObservedPlays[i] : [];
                 let opponentCardsContent = '<div class="display-card-container">';
+                const opponentName = playerRole === 'Turing' ? 'Scherbius' : 'Turing';
+
                 if (opponentPlayForBattle.length > 0) {
                     opponentPlayForBattle.forEach(cardVal => {
                         const cardEl = document.createElement('div');
-                        cardEl.classList.add('display-card', 'opponent-card');
+                        cardEl.classList.add('display-card');
+                        if (opponentName === 'Scherbius') {
+                            cardEl.classList.add('scherbius-opponent-card');
+                        } else if (opponentName === 'Turing') {
+                            cardEl.classList.add('turing-opponent-card');
+                        }
                         cardEl.textContent = cardVal;
                         opponentCardsContent += cardEl.outerHTML;
                     });
                 }
                 opponentCardsContent += '</div>';
                 
-                const opponentName = playerRole === 'Turing' ? 'Scherbius' : 'Turing';
                 let opponentStatusText = `${opponentName} Will Play: ${opponentCardsContent}`;
                 if (playerRole === 'Turing' && currentServerState.scherbius_did_encrypt) {
                     opponentStatusText += ` (Encrypted!)`;
@@ -425,9 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerPlayedCardsArea.innerHTML = `<h4>Your Plays for Battle ${i+1}:</h4>`;
                 const slotsContainer = document.createElement('div');
                 slotsContainer.classList.add('card-slots-container');
-                slotsContainer.style.display = 'flex'; 
-                // slotsContainer.style.gap = '5px'; 
-
+                
                 for (let slotIdx = 0; slotIdx < maxCardsPerBattleForDisplay; slotIdx++) {
                     const slotDiv = document.createElement('div');
                     slotDiv.classList.add('card-slot');
@@ -449,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!roundData || !roundData.battles) {
                 if (currentServerState.is_game_over && historyIdx === VIEWING_CURRENT_ROUND_INDEX() && clientState.roundHistory.length > 0) {
                      battleZoneTitleEl.textContent = "Game Over - Final Round Details";
-                     // Attempt to render the last round if roundData was indeed the issue
                      const lastRoundData = clientState.roundHistory[clientState.roundHistory.length -1];
                      if (lastRoundData && lastRoundData.battles) {
                         // Fallthrough to historical rendering with lastRoundData
@@ -464,10 +473,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             }
-            // If we fell through from game over case, use lastRoundData, else use roundData
             const displayData = (currentServerState.is_game_over && historyIdx === VIEWING_CURRENT_ROUND_INDEX() && clientState.roundHistory.length > 0) ? clientState.roundHistory[clientState.roundHistory.length -1] : roundData;
 
-            if (!displayData || !displayData.battles) { // Final check
+            if (!displayData || !displayData.battles) { 
                 battleZoneTitleEl.textContent = "No round data to display.";
                 return;
             }
@@ -496,12 +504,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     battle.rewards_available_to_turing.cards.forEach(cardVal => { rewardsContent += `<div class="display-card">${cardVal}</div>`; });
                 }
                 rewardsContent += '</div>';
-                rewardInfoHTML += `<p>Rewards Available (to Turing): ${rewardsContent}</p></div>`;
+                rewardInfoHTML += `<p>Rewards Available: ${rewardsContent}</p></div>`;
 
-                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`;
+                // Scherbius committed cards area
+                let scherbiusInfoHTML = `<div class="scherbius-observed-info">`; // Re-using class for consistency, styled differently for historical
                 let scherbiusCardsContent = '<div class="display-card-container">';
                 if (battle.scherbius_committed_cards.length > 0) {
                     battle.scherbius_committed_cards.forEach(cardVal => {
+                        // Use .scherbius-card for historical Scherbius cards
                         scherbiusCardsContent += `<div class="display-card scherbius-card">${cardVal}</div>`;
                     });
                 } else {
@@ -509,12 +519,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 scherbiusCardsContent += '</div>';
                 let scherbiusEncryptedText = displayData.scherbius_encrypted_this_round ? " (Encrypted)" : "";
-                scherbiusInfoHTML += `<p>Scherbius Committed${scherbiusEncryptedText}: ${scherbiusCardsContent}</p></div>`;
+                scherbiusInfoHTML += `<h4>Scherbius Committed${scherbiusEncryptedText}:</h4>${scherbiusCardsContent}</div>`;
                 
-                let turingPlayedHTML = `<div class="turing-played-cards-area static-played-cards-area"><h4>Turing Played:</h4>`;
+                // Turing played cards area
+                let turingPlayedHTML = `<div class="static-played-cards-area"><h4>Turing Played:</h4>`;
                 let turingCardsContent = '<div class="display-card-container">';
                 if (battle.turing_played_cards.length > 0) {
                     battle.turing_played_cards.forEach(cardVal => {
+                         // Use .turing-summary-card for historical Turing cards
                          turingCardsContent += `<div class="display-card turing-summary-card">${cardVal}</div>`;
                     });
                 } else {
@@ -583,23 +595,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const isTuringTurnNow = !isGameOver && isViewingCurrent && playerRole === "Turing" && serverState.current_phase === "Turing_Action";
         const isScherbiusTurnNow = !isGameOver && isViewingCurrent && playerRole === "Scherbius" && serverState.current_phase === "Scherbius_Action";
 
-        // Turing Controls
         turingControlsEl.style.display = isTuringTurnNow ? 'block' : 'none';
-        if (isTuringTurnNow) { // Only manage children if parent is visible
+        if (isTuringTurnNow) { 
             turingHandAreaEl.style.display = 'block';
-            turingHandEl.style.display = 'flex'; // Assuming cards are flex items
+            turingHandEl.style.display = 'flex'; 
             turingSubmitActionBtn.style.display = 'block';
             turingSubmitActionBtn.disabled = false;
         }
 
-        // Scherbius Controls
         scherbiusControlsEl.style.display = isScherbiusTurnNow ? 'block' : 'none';
-        if (isScherbiusTurnNow) { // Only manage children if parent is visible
+        if (isScherbiusTurnNow) { 
             scherbiusHandAreaEl.style.display = 'block';
-            scherbiusHandEl.style.display = 'flex'; // Assuming cards are flex items
+            scherbiusHandEl.style.display = 'flex'; 
             scherbiusSubmitActionBtn.style.display = 'block';
             scherbiusSubmitActionBtn.disabled = false;
-            // scherbiusEncryptCheckbox is part of scherbiusControlsEl, its visibility is handled.
         }
         
         gameAreaEl.style.display = 'block';
@@ -625,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (historyLen > 0 && clientState.currentHistoryViewIndex < historyLen) {
                 historicalRoundIndicatorEl.textContent = `Viewing Past Round ${clientState.roundHistory[clientState.currentHistoryViewIndex].round_number} of ${historyLen}`;
-            } else { // Should not happen if buttons are disabled correctly
+            } else { 
                 historicalRoundIndicatorEl.textContent = "History Navigation"; 
             }
         }
@@ -674,5 +683,5 @@ document.addEventListener('DOMContentLoaded', () => {
     
     clientState.currentHistoryViewIndex = VIEWING_CURRENT_ROUND_INDEX();
     updateHistoryNavigationControls();
-    manageRoundViewSpecificUI(); // Will hide controls as latestServerState is null
+    manageRoundViewSpecificUI(); 
 });

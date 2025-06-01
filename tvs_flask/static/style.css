@@ -1,316 +1,455 @@
 /* styles.css */
 
-body { font-family: Arial, sans-serif; line-height: 1.6; margin: 10px; background-color: #f0f2f5; color: #333; }
-.container { max-width: 1200px; margin: auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-h1, h2, h3 { color: #333; margin-top: 0.8em; margin-bottom: 0.4em; }
-h1 { text-align: center; color: #0056b3; }
+/* --- CSS Variables --- */
+:root {
+    --turing-color-primary: #007bff;      /* Blue primary */
+    --turing-color-secondary: #cce7ff;   /* Light blue background */
+    --turing-color-tertiary: #e6f2ff;   /* Lighter blue for hover/active states */
+    --turing-color-text: #003d7a;        /* Dark blue text */
+    --turing-border-color: #0056b3;
 
-.game-controls, .scores-summary-box, #battleZoneArea, #turingActionControls, #gameOverMessage {
-    margin-bottom: 15px; padding: 12px; border: 1px solid #d1d9e6; border-radius: 6px; background-color: #f8f9fa;
+    --scherbius-color-primary: #6f42c1;   /* Purple primary */
+    --scherbius-color-secondary: #e6e0f2; /* Light purple background */
+    --scherbius-color-tertiary: #d8cff0; /* Lighter purple for hover/active states */
+    --scherbius-color-text: #492b7c;      /* Dark purple text */
+    --scherbius-border-color: #59359a;
+
+    --neutral-bg-light: #f8f9fa;
+    --neutral-bg-medium: #e9ecef;
+    --neutral-bg-dark: #ffffff;
+    --neutral-border-color: #d1d9e6;
+    --neutral-text-color: #333;
+    --neutral-text-light: #555;
+
+    --vp-reward-bg: #ffe0cc;
+    --vp-reward-border: #ffbfa0;
+    --vp-reward-text: #c06030;
+
+    --success-bg-color: #d4edda;
+    --success-border-color: #c3e6cb;
+    --success-text-color: #155724;
+
+    --danger-bg-color: #ffdddd;
+    --danger-border-color: #ff0000;
+
+    --button-bg-color: var(--turing-color-primary);
+    --button-text-color: white;
+    --button-hover-bg-color: var(--turing-border-color);
+    --button-disabled-bg-color: #cccccc;
+
+    --card-interactive-width: 48px;
+    --card-interactive-height: 70px;
+    --card-display-width: 30px;
+    --card-display-height: 45px;
+    --card-font-size-interactive: 1.1em;
+    --card-font-size-display: 0.8em;
+    --card-border-radius: 4px;
+    --card-padding: 8px;
+}
+
+/* --- Base Styles --- */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 10px;
+    background-color: #f0f2f5;
+    color: var(--neutral-text-color);
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    background: var(--neutral-bg-dark);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4 {
+    color: var(--neutral-text-color);
+    margin-top: 0.8em;
+    margin-bottom: 0.4em;
+}
+h1 { text-align: center; color: var(--turing-color-primary); }
+h2 { color: var(--turing-border-color); }
+h3 { color: var(--turing-color-primary); }
+#battleZoneArea h3 { text-align: center; }
+.battle-item h4 { margin-top: 0; margin-bottom: 8px; text-align: center; }
+.historical-battle-item h4 { color: var(--neutral-text-light); }
+
+
+/* --- Layout Sections --- */
+.game-controls,
+.scores-summary-box,
+#battleZoneArea,
+#historicalRoundViewArea,
+#gameOverMessage {
+    margin-bottom: 15px;
+    padding: 12px;
+    border: 1px solid var(--neutral-border-color);
+    border-radius: 6px;
+    background-color: var(--neutral-bg-light);
 }
 
 .scores-summary-box {
-    background-color: #e9ecef;
-    border-left: 5px solid #007bff;
+    background-color: var(--neutral-bg-medium);
+    border-left: 5px solid var(--turing-color-primary);
 }
-.scores-summary-box h2 { margin-top: 0; color: #0056b3; }
+.scores-summary-box h2 { margin-top: 0; }
 .scores-summary-box p { margin: 6px 0; font-size: 0.95em; }
 .scores-summary-box span { font-weight: bold; color: #343a40; }
 
-/* --- Hand Area Styling --- */
-#turingHand {
-    display: flex; 
-    flex-wrap: wrap; 
-    gap: 5px; 
-    padding: 10px;
-    border: 1px solid #007bff; 
-    min-height: 80px; 
-    background-color: #dfefff; 
-    margin-bottom:10px;
+/* --- Buttons --- */
+button {
+    padding: 10px 18px;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 1em;
 }
-#turingHand.drag-over {
-    background-color: #d0eaff; 
-}
-
-#scherbiusHand {
-    display: flex; 
-    flex-wrap: wrap; 
-    gap: 5px; 
-    padding: 10px;
-    border: 1px solid #59487a;
-    min-height: 80px; 
-    background-color: #dfefff; 
-    margin-bottom:10px;
-}
-#scherbiusHand.drag-over {
-    background-color: #d0eaff; 
+button:hover { background-color: var(--button-hover-bg-color); }
+button:disabled {
+    background-color: var(--button-disabled-bg-color);
+    cursor: not-allowed;
 }
 
-/* --- Card Slot Styling (for battle areas) --- */
-.turing-played-cards-area { /* Container for slots in an active battle */
-    display: flex; 
-    gap: 5px; 
-    padding: 5px;
-    min-height: 70px; 
-    align-items: center; 
-    flex-wrap: wrap; 
-}
-
-.card-slot {
-    width: 50px;  
-    height: 70px; 
-    border: 2px dashed #ccc; 
-    display: flex; 
+/* --- Draggable Card Styles (General) --- */
+.card {
+    display: flex;
     justify-content: center;
     align-items: center;
-    box-sizing: border-box; 
+    padding: var(--card-padding);
+    border-radius: var(--card-border-radius);
+    font-weight: bold;
+    font-size: var(--card-font-size-interactive);
+    cursor: grab;
+    user-select: none;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    position: relative;
+}
+.card.dragging {
+    opacity: 0.4;
+    border-style: dashed !important;
+    transform: scale(1.05);
 }
 
+/* Player-Specific Interactive Cards (In Hand or Played into Slots) */
+.turing-card-ingame {
+    background-color: var(--turing-color-secondary);
+    border: 1px solid var(--turing-border-color);
+    color: var(--turing-color-text);
+}
+.scherbius-card-ingame {
+    background-color: var(--scherbius-color-secondary);
+    border: 1px solid var(--scherbius-border-color);
+    color: var(--scherbius-color-text);
+}
+
+/* --- Hand Area Styles --- */
+.card-source { /* Common class for #turingHand and #scherbiusHand */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 10px;
+    min-height: 80px;
+    margin-bottom: 10px;
+    border-radius: var(--card-border-radius);
+}
+#turingHand {
+    border: 1px solid var(--turing-color-primary);
+    background-color: var(--turing-color-tertiary);
+}
+#scherbiusHand {
+    border: 1px solid var(--scherbius-color-primary);
+    background-color: var(--scherbius-color-tertiary);
+}
+.card-source.drag-over {
+    background-color: #d0eaff; /* Generic drag over, can be refined if needed */
+}
+#turingHand.drag-over { background-color: var(--turing-color-secondary); }
+#scherbiusHand.drag-over { background-color: var(--scherbius-color-secondary); }
+
+
+/* Cards within Hand Areas */
+.card-source > .card {
+    width: var(--card-interactive-width);
+    height: var(--card-interactive-height);
+    margin: 2px; /* Individual margin if gap isn't enough or for specific alignment */
+}
+
+/* --- Player Action Controls (Hand title, submit button) --- */
+/* #turingControls h3, #scherbiusControls h3 { margin-bottom: 5px; } */
+#turingControls #turingHandArea h3, 
+#scherbiusControls #scherbiusHandArea h3 { 
+    margin-bottom: 5px; 
+    color: var(--neutral-text-color); /* This makes the hand titles black/dark grey */
+}
+#turingControls { border-top: 2px solid var(--turing-color-primary); padding-top: 10px; }
+#scherbiusControls { border-top: 2px solid var(--scherbius-color-primary); padding-top: 10px; }
+
+
+/* --- Card Slot Styles (for active turn battle areas) --- */
+.player-played-cards-area { /* Container for slots in an active battle */
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border: 2px dashed var(--neutral-border-color);
+    border-radius: var(--card-border-radius);
+    background-color: var(--neutral-bg-light);
+}
+.player-played-cards-area h4 { font-size: 0.9em; color: var(--neutral-text-light); margin-bottom: 5px; text-align: left;}
+
+.card-slots-container {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    min-height: calc(var(--card-interactive-height) + 4px); /* Slot height + border */
+}
+.card-slot {
+    width: var(--card-interactive-width);
+    height: var(--card-interactive-height);
+    border: 2px dashed #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    border-radius: var(--card-border-radius);
+}
 .card-slot.drag-over {
     background-color: #e0e0e0;
     border-color: #aaa;
 }
 .card-slot.drag-over-full {
-    background-color: #ffdddd; 
-    border-color: #ff0000;
+    background-color: var(--danger-bg-color);
+    border-color: var(--danger-border-color);
 }
 
-/* --- General Card Styling (applied to all cards) --- */
-.card {
-    display: flex; 
-    justify-content: center; 
-    align-items: center;
-    padding: 8px; 
-    border-radius: 4px; 
-    font-weight: bold; 
-    font-size: 1.1em; 
-    cursor: grab; 
-    user-select: none; 
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-    box-sizing: border-box; 
-    position: relative; 
+/* Cards within Slots */
+.card-slot > .card {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    /* Player-specific styles (.turing-card-ingame, .scherbius-card-ingame) will apply for color */
 }
 
-/* --- Specific Styling for Cards in Hand --- */
-#turingHand > .card { 
-    width: 48px; 
-    height: 70px; 
-    margin: 4px; 
-    border: 1px solid #0056b3; 
-    background-color: #cce7ff;
-    color: #003d7a;
-}
 
-/* --- Specific Styling for Cards Inside Slots --- */
-.card-slot > .card { 
-    width: 100%; 
-    height: 100%; 
-    margin: 0; 
-    border: 1px solid #333; 
-    background-color: #fff; 
-    color: #333; 
-}
-
-.card.dragging { 
-    opacity: 0.4; 
-    border-style: dashed !important; 
-    transform: scale(1.05); 
-}
-
-.battle-container { display: flex; justify-content: space-around; flex-wrap: wrap; }
-
-/* Styling for items in the #rewardsDisplay container */
-.interactive-battle-container .battle-item,
-.historical-battle-item { /* Common styling for battle items */
-    background-color: #ffffff; width: calc(33% - 24px); min-height: 220px; 
-    padding: 10px; margin: 8px; border: 1px solid #adb5bd; border-radius: 5px;
-    display: flex; flex-direction: column; align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-.interactive-battle-container .battle-item h4, /* For current round battle titles */
-.historical-battle-item h4 { /* For historical round battle titles */
-    margin-top: 0; margin-bottom: 8px; color: #0056b3; text-align: center;
-}
-
-.reward-info p, .scherbius-observed-info p { 
-    margin: 3px 0; font-size: 0.8em; text-align: center;
-    display: flex; /* To align text and card containers nicely */
-    align-items: center;
-    gap: 5px; /* Space between label and cards */
-    justify-content: center; /* Center the content within the paragraph */
-}
-.scherbius-observed-info { /* Container for Scherbius's observed/committed cards */
-    margin-top: 5px; padding-top: 5px; border-top: 1px dashed #e0e0e0; width: 90%;
-}
-
-/* Active Turing play area (container of slots) */
-.interactive-battle-container .battle-item .turing-played-cards-area {
-    width: 100%; 
-    margin-top: auto; /* Pushes it to the bottom */
-    border: 2px dashed #c3dae8; 
-    border-radius: 4px; 
-    background-color: #f1f7fc;
-    align-content: flex-start; 
-}
-.interactive-battle-container .battle-item.drag-over .turing-played-cards-area { 
-    border-color: #007bff; 
-    background-color: #e6f2ff;
-}
-
-/* For summary battle reports (if any were still used, e.g. in a different last round summary) */
-.summary-battle-container .summary-battle-report {
-    background-color: #fdfdfe; width: calc(33% - 24px);
-    padding: 10px; margin: 8px; border: 1px solid #ced4da; border-radius: 5px;
-}
-.summary-battle-container .summary-battle-report h5 { margin-top:0; margin-bottom: 5px; color: #495057; }
-.summary-battle-container .summary-battle-report p { margin: 2px 0; font-size: 0.8em; }
-.summary-battle-container .summary-battle-report .cards-list { font-style: italic; color: #5f676d; }
-
-
-button {
-    padding: 10px 18px; background-color: #007bff; color: white;
-    border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 1em;
-}
-button:hover { background-color: #0056b3; }
-button:disabled { background-color: #cccccc; cursor: not-allowed; }
-
-#gameOverMessage { background-color: #d4edda; border-color: #c3e6cb; text-align: center; }
-#gameOverMessage h2 { color: #155724; }
-
-/* --- Display-Only Card Styling (for Rewards & Summaries) --- */
+/* --- Display-Only Card Styles (Rewards, Opponent Info, Historical Summaries) --- */
 .display-card-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px; 
-    justify-content: center; 
+    gap: 3px;
+    justify-content: flex-start; /* Default to left align, center in specific contexts if needed */
     margin-top: 4px;
-    min-height: 25px; /* Ensure it has some height even if empty for alignment */
+    min-height: calc(var(--card-display-height) + 2px); /* Ensure it has some height */
+}
+.reward-info .display-card-container,
+.opponent-observed-info .display-card-container {
+    justify-content: center; /* Center cards in reward/opponent info sections */
 }
 
 .display-card {
-    display: inline-flex; 
+    display: inline-flex;
     justify-content: center;
     align-items: center;
-    width: 30px;  
-    height: 45px; 
+    width: var(--card-display-width);
+    height: var(--card-display-height);
     padding: 4px;
     border: 1px solid #777;
     border-radius: 3px;
     font-weight: bold;
-    font-size: 0.8em; 
-    color: #333;
-    background-color: #f0f0f0; 
+    font-size: var(--card-font-size-display);
+    color: var(--neutral-text-color);
+    background-color: #f0f0f0;
     box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    margin: 1px; 
+    margin: 1px;
 }
 
 .display-card.vp-reward {
-    background-color: #ffe0cc; 
-    border-color: #ffbfa0;
-    color: #c06030;
+    background-color: var(--vp-reward-bg);
+    border-color: var(--vp-reward-border);
+    color: var(--vp-reward-text);
 }
-.display-card.vp-reward::before { 
+.display-card.vp-reward::before {
     content: "VP ";
     font-size: 0.8em;
     margin-right: 2px;
     font-weight: normal;
 }
 
-.display-card.scherbius-card {
-    background-color: #e6e0f2; 
-    border-color: #c0b2d4;
-    color: #59487a;
+/* Opponent cards in current round view */
+.display-card.turing-opponent-card {
+    background-color: var(--turing-color-secondary);
+    border-color: var(--turing-border-color);
+    color: var(--turing-color-text);
+}
+.display-card.scherbius-opponent-card {
+    background-color: var(--scherbius-color-secondary);
+    border-color: var(--scherbius-border-color);
+    color: var(--scherbius-color-text);
 }
 
-/* .display-card.scherbius-card-encrypted was removed */
-
-.display-card.turing-summary-card { /* For Turing's cards in historical/summary views */
-    background-color: #d4eaff; 
-    border-color: #a8c5e0;
-    color: #003d7a;
+/* Cards in historical summaries */
+.display-card.turing-summary-card { /* Turing's cards in historical view */
+    background-color: var(--turing-color-secondary);
+    border-color: var(--turing-border-color);
+    color: var(--turing-color-text);
+}
+.display-card.scherbius-card { /* Scherbius' cards in historical view */
+    background-color: var(--scherbius-color-secondary);
+    border-color: var(--scherbius-border-color);
+    color: var(--scherbius-color-text);
 }
 
-.reward-info .display-card-container,
-.scherbius-observed-info .display-card-container,
-.summary-battle-report .display-card-container,
-.static-played-cards-area .display-card-container { /* Ensure historical Turing cards also align */
-    justify-content: flex-start; 
+
+/* --- Battle Display Area --- */
+.battle-container { /* Common for #rewardsDisplay */
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 10px; /* Gap between battle items */
+}
+.battle-item { /* Common styling for individual battle displays (current or historical) */
+    background-color: var(--neutral-bg-dark);
+    width: calc(33% - 20px); /* Adjust for gap and padding */
+    min-height: 250px;
+    padding: 12px;
+    margin: 5px 0; /* Vertical margin, horizontal handled by gap */
+    border: 1px solid var(--neutral-border-color);
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-/* --- Historical Round View Styling --- */
+/* Current Round Battle Item Specifics */
+.interactive-battle-container .battle-item {
+    /* Any specific styles for current round battle items if different from historical */
+}
+.reward-info, .opponent-observed-info {
+    margin-bottom: 8px;
+    width: 100%;
+}
+.reward-info p, .opponent-observed-info p {
+    margin: 3px 0;
+    font-size: 0.85em;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+}
+.opponent-observed-info {
+    padding-top: 8px;
+    border-top: 1px dashed #e0e0e0;
+}
+.opponent-observed-info p { font-size: 0.8em; }
+
+
+/* --- Historical Round View --- */
 #historicalRoundViewArea {
     margin-top: 20px;
-    padding: 15px;
-    border: 1px solid #c0c0c0;
     background-color: #f9f9f9;
-    border-radius: 6px; 
 }
-
-#historicalRoundViewArea h3 { 
-    color: #333; 
-    margin-top: 0; 
+#historicalRoundViewArea h3 {
+    color: var(--neutral-text-light);
+    margin-top: 0;
     margin-bottom: 0.8em;
-    text-align: center; /* Center the "Historical Round Details" title */
+    text-align: center;
 }
-
 .history-navigation {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px; 
-    padding-bottom: 10px; 
-    border-bottom: 1px solid #e0e0e0; 
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
 }
-
 #historicalRoundIndicator {
     font-weight: bold;
-    font-size: 0.95em; 
-    color: #0056b3; 
+    font-size: 0.95em;
+    color: var(--turing-border-color);
 }
 
-/* #historicalRoundContent p#historicalRoundInfo was for a general info para, not used for battle display */
-
-/* --- Styling for Historical Items in Main Display (#rewardsDisplay) --- */
+/* Historical Battle Item Specifics */
 .historical-battle-item {
-    background-color: #f0f0f0; 
-    border: 1px solid #dcdcdc;
+    background-color: #f0f0f0;
+    border-color: #dcdcdc;
 }
+.historical-battle-item .reward-info p { font-size: 0.8em; }
 
-.static-played-cards-area { /* Container for Turing's played cards in historical view */
-    padding: 5px;
+/* Dotted boxes for player cards in historical view */
+.historical-battle-item .scherbius-observed-info,
+.historical-battle-item .static-played-cards-area {
+    padding: 8px;
     margin-top: 10px;
-    border-top: 1px dashed #ccc;
-    width: 90%; /* Match scherbius-observed-info width */
+    border-radius: var(--card-border-radius);
+    width: 95%; /* Adjust width as needed */
+    margin-left: auto;
+    margin-right: auto;
 }
-.static-played-cards-area h4 { /* "Turing Played:" title */
+.historical-battle-item .scherbius-observed-info h4,
+.historical-battle-item .static-played-cards-area h4 {
     font-size: 0.9em;
-    color: #555;
+    color: var(--neutral-text-light);
     margin-bottom: 5px;
     text-align: center;
 }
 
-/* .historical-battle-item .card-slot was removed as historical views don't show empty slots */
+.historical-battle-item .scherbius-observed-info {
+    border: 2px dotted var(--scherbius-color-primary);
+    background-color: var(--scherbius-color-tertiary);
+}
+.historical-battle-item .scherbius-observed-info h4 { color: var(--scherbius-color-text); }
 
-/* --- Battle Outcome Styling (for historical view) --- */
+
+.historical-battle-item .static-played-cards-area {
+    border: 2px dotted var(--turing-color-primary);
+    background-color: var(--turing-color-tertiary);
+}
+.historical-battle-item .static-played-cards-area h4 { color: var(--turing-color-text); }
+
+
+/* Battle Outcome Styling (Historical View) */
 .battle-outcome {
     font-weight: bold;
     padding: 4px 8px;
-    margin: 8px auto 5px auto; /* Centering the outcome box */
-    border-radius: 4px;
+    margin: 8px auto 5px auto;
+    border-radius: var(--card-border-radius);
     text-align: center;
     font-size: 0.9em;
-    width: fit-content; /* Make it only as wide as its content */
+    width: fit-content;
 }
 .battle-outcome.turing-wins {
-    background-color: #85c2ff; 
-    color: #000000; 
+    background-color: var(--turing-color-secondary);
+    color: var(--turing-color-text);
+    border: 1px solid var(--turing-color-primary);
 }
 .battle-outcome.scherbius-wins {
-    background-color: #c7acfb; 
-    color: #000000;
+    background-color: var(--scherbius-color-secondary);
+    color: var(--scherbius-color-text);
+    border: 1px solid var(--scherbius-color-primary);
 }
 .battle-outcome.draw {
-    background-color: #e2e3e5; 
-    color: #383d41; 
+    background-color: #e2e3e5;
+    color: #383d41;
     border: 1px solid #d6d8db;
+}
+
+/* --- Game Over Message --- */
+#gameOverMessage {
+    background-color: var(--success-bg-color);
+    border-color: var(--success-border-color);
+    text-align: center;
+}
+#gameOverMessage h2 { color: var(--success-text-color); }
+
+/* Scherbius Encrypt Checkbox */
+#scherbiusControls label[for="scherbiusEncryptCheckbox"] {
+    margin-left: 10px;
+    font-size: 0.9em;
 }
