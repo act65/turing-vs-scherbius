@@ -230,6 +230,7 @@ def submit_player_action():
         game_state["scherbius_planned_encryption"] = scherbius_encryption_for_step
 
         # AI Turing plans now
+        # TODO AI player needs access to Scherbius' encrypted cards!
         turing_ai_hand, _ = game.turing_observation([]) # Deals cards to AI Turing
         final_turing_strategy = turing_ai_player(turing_ai_hand, GAME_CONFIG.n_battles)
         game_state["turing_planned_strategy"] = final_turing_strategy # Store for record if needed
