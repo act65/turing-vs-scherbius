@@ -1,7 +1,7 @@
 import pytest
 import random
 from unittest.mock import patch, MagicMock
-import utils # Assuming this is in PYTHONPATH or same directory
+from .. import utils # Assuming this is in PYTHONPATH or same directory
 from .conftest import MockGameConfig, MockPyGameState, MockBattleOutcome # Import mocks
 
 @pytest.fixture

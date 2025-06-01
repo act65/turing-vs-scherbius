@@ -102,6 +102,46 @@ To remove the deployed resources:
     ```
 3.  You may also want to manually delete the Docker image from Artifact Registry if you no longer need it.
 
+## Code Overview (tvs_flask)
+
+The `tvs_flask` application provides a web-based interface for playing the Turing vs. Scherbius game. It allows users to select a role (Turing or Scherbius) and play against an AI opponent.
+
+### Key Components:
+
+*   **`app.py`**: This is the main Flask application file. It defines the web routes, handles HTTP requests from the client, and uses the `GameManager` to process game logic and serve the HTML templates for the user interface.
+*   **`manager.py`**: This module contains the `GameManager` class. The `GameManager` is responsible for orchestrating the game flow, managing the game state (including interactions with the `tvs_core` game engine), handling player actions, and interfacing with the AI logic.
+*   **`utils.py`**: This utility module provides helper functions used across the application, primarily by `manager.py`. This includes the AI logic for both Turing and Scherbius, functions for preparing data for client display, and managing game state components.
+*   **`static/`**: This directory contains static files served directly to the client, such as `style.css` for styling and `script.js` for client-side interactions.
+*   **`templates/`**: This directory holds the HTML templates (e.g., `index.html`) that are rendered by Flask to create the web pages users interact with.
+*   **`tests/`**: This directory contains the unit tests for the `tvs_flask` application, written for the pytest framework.
+
+## Python Application Setup (tvs_flask)
+
+These instructions are for setting up and running the Python Flask web application (`tvs_flask`).
+
+1.  **Create and activate a virtual environment:**
+    It's recommended to use a virtual environment to manage dependencies.
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+
+2.  **Install dependencies:**
+    Install Flask and pytest using pip:
+    ```bash
+    pip install Flask pytest
+    ```
+
+## Running Tests (tvs_flask)
+
+To run the tests for the Flask application, navigate to the root of the repository and use the following command:
+
+```bash
+python -m pytest tvs_flask/tests
+```
+
+**Note on `tvs_core`:** The tests for `tvs_flask` interact with a module named `tvs_core`, which contains the core game logic. This module is expected to be provided or built separately (e.g., from Rust code). If `tvs_core` is not available in your Python environment, you may encounter errors during test collection or execution (specifically `AttributeError: module 'tvs_core' has no attribute 'PyGameState'`). These particular errors can be disregarded if you are only focusing on the `tvs_flask` application components, as the core game logic is mocked in many of the tests.
+
 # Installation
 
 First, clone the repository;

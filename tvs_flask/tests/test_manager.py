@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock, ANY
-from game_manager_refactored import GameManager
-import utils # For get_initial_state
+from ..manager import GameManager
+from .. import utils # For get_initial_state
 from .conftest import MockGameConfig, MockPyGameState # Import mocks from conftest
 
 # This ensures that when GameManager imports tvs_core, it gets our mock
-@pytestfixture(autouse=True)
+@pytest.fixture(autouse=True)
 def mock_tvs_core(monkeypatch):
     mock_core = MagicMock()
     mock_core.PyGameState = MockPyGameState # Use the class from conftest
