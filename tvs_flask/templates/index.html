@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turing vs Scherbius (Lib v4 - No Guess)</title>
+    <title>Turing vs Scherbius</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -11,7 +11,13 @@
         <h1>Turing vs Scherbius</h1>
 
         <div class="game-controls">
-            <button id="newGameBtn">New Game</button>
+            <button id="playAsTuringBtn">Play as Turing</button>
+            <button id="playAsScherbiusBtn">Play as Scherbius</button>
+        </div>
+
+        <div id="gameOverMessage" style="display:none;">
+            <h2>Game Over!</h2>
+            <p>Winner: <span id="winner"></span></p>
         </div>
 
         <div class="scores-summary-box">
@@ -21,18 +27,13 @@
             <p>Points required for Victory: <span id="maxVictoryPoints">N/A</span></p>
         </div>
 
-        <!-- LastRoundSummaryArea was removed as requested -->
-
         <div id="historicalRoundViewArea" style="display:none;">
             <h3>Historical Round Details</h3>
             <div class="history-navigation">
-                <button id="prevRoundBtn" disabled>< Previous Round</button>
+                <button id="prevRoundBtn" disabled>Previous Round</button>
                 <span id="historicalRoundIndicator">Round X of Y</span>
                 <button id="nextRoundBtn" disabled>Next Round ></button>
             </div>
-            <!-- historicalRoundContent is not directly used for battle display anymore,
-                 rewardsDisplayEl is used for both current and historical battles.
-            -->
             <div id="historicalRoundContent" style="display:none;"> <!-- Ensure this is hidden if not used -->
                 <p id="historicalRoundInfo"></p>
                 <div id="historicalRoundBattles" class="battle-container summary-battle-container">
@@ -46,19 +47,26 @@
                 <div id="rewardsDisplay" class="battle-container interactive-battle-container"></div>
             </div>
             
-            <div id="turingActionControls">
+            <div id="turingControls">
                 <div id="turingHandArea" style="display:none;"> <!-- Initially hidden, shown by JS for current round -->
                     <h3>Your Hand:</h3>
                     <div id="turingHand" class="card-source"></div>
                 </div>
-                <button id="submitTuringActionBtn" style="display:none;">Submit Actions</button> <!-- Initially hidden -->
+                <button id="turingSubmitActionBtn" style="display:none;">Submit Actions</button> <!-- Initially hidden -->
+            </div>
+
+            <div id="scherbiusControls" style="display: none;">
+                <div id="scherbiusHandArea" style="display:none;"> <!-- Initially hidden, shown by JS for current round -->
+                    <h3>Your Hand:</h3>
+                    <div id="scherbiusHand" class="card-source"></div>
+                </div>
+                <button id="scherbiusSubmitActionBtn" style="display:none;">Submit Actions</button> <!-- Initially hidden -->
+                
+                <label for="scherbiusEncryptCheckbox">Encrypt Communications? (Cost: 10 VP)</label>
+                <input type="checkbox" id="scherbiusEncryptCheckbox">
             </div>
         </div>
         
-        <div id="gameOverMessage" style="display:none;">
-            <h2>Game Over!</h2>
-            <p>Winner: <span id="winner"></span></p>
-        </div>
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

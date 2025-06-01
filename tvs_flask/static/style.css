@@ -32,6 +32,20 @@ h1 { text-align: center; color: #0056b3; }
     background-color: #d0eaff; 
 }
 
+#scherbiusHand {
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 5px; 
+    padding: 10px;
+    border: 1px solid #59487a;
+    min-height: 80px; 
+    background-color: #dfefff; 
+    margin-bottom:10px;
+}
+#scherbiusHand.drag-over {
+    background-color: #d0eaff; 
+}
+
 /* --- Card Slot Styling (for battle areas) --- */
 .turing-played-cards-area { /* Container for slots in an active battle */
     display: flex; 
@@ -288,14 +302,12 @@ button:disabled { background-color: #cccccc; cursor: not-allowed; }
     width: fit-content; /* Make it only as wide as its content */
 }
 .battle-outcome.turing-wins {
-    background-color: #d4edda; 
-    color: #155724; 
-    border: 1px solid #c3e6cb;
+    background-color: #85c2ff; 
+    color: #000000; 
 }
 .battle-outcome.scherbius-wins {
-    background-color: #f8d7da; 
-    color: #721c24; 
-    border: 1px solid #f5c6cb;
+    background-color: #c7acfb; 
+    color: #000000;
 }
 .battle-outcome.draw {
     background-color: #e2e3e5; 

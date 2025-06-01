@@ -269,6 +269,9 @@ impl GameState {
             self.turing_hand.truncate(self.game_config.max_hand_size as usize);
         }
 
+        // reset enigma steps
+        self.encoder.reset_steps();
+
         Ok(detailed_outcomes)
     }
 }
