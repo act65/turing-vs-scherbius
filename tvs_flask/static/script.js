@@ -552,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         scherbiusCardsContent += `<div class="display-card scherbius-card">${cardVal}</div>`;
                     });
                 } else {
-                     scherbiusCardsContent += `<span>(No cards)</span>`;
+                     scherbiusCardsContent += ``;
                 }
                 scherbiusCardsContent += '</div>';
                 let scherbiusEncryptedText = displayData.scherbius_encrypted_this_round ? " (Encrypted)" : "";
@@ -567,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          turingCardsContent += `<div class="display-card turing-summary-card">${cardVal}</div>`;
                     });
                 } else {
-                    turingCardsContent += `<span>(No cards)</span>`;
+                    turingCardsContent += `<span></span>`;
                 }
                 turingCardsContent += '</div>';
                 turingPlayedHTML += `${turingCardsContent}</div>`;
