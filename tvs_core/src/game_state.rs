@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 use crate::enigma;
 use crate::utils;
 use crate::game_config::GameConfig;
-use crate::game_types::{Actor, Reward, Cards};
+use crate::game_types::{Actor, Reward};
 use crate::game_logic::random_rewards;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

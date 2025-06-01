@@ -1,11 +1,10 @@
 use std::cmp::Ordering;
 use std::iter::zip;
-use rand::{Rng, rngs::StdRng}; // No SeedableRng needed here directly
-use std::sync::Arc;
+use rand::Rng;
 use rand_chacha::ChaCha12Rng; // Import ChaCha12Rng
 
 use crate::game_state::GameState;
-use crate::game_config::GameConfig; // Only if needed directly, usually via GameState
+
 use crate::game_types::{
     Actor, Reward, Cards, ScherbiusAction, TuringAction, Action, BattleOutcomeDetail,
 };
@@ -90,8 +89,8 @@ pub fn process_step(
     turing_action: &TuringAction,
 ) -> Result<(GameState, Vec<BattleOutcomeDetail>), String> {
     // Validate actions
-    check_action_validity(¤t_state, &Action::ScherbiusAction(scherbius_action.clone()))?;
-    check_action_validity(¤t_state, &Action::TuringAction(turing_action.clone()))?;
+    check_action_validity(&current_state, &Action::ScherbiusAction(scherbius_action.clone()))?;
+    check_action_validity(&current_state, &Action::TuringAction(turing_action.clone()))?;
 
     // Remove played cards from hands
     utils::remove_played_cards_from_hand(&mut current_state.scherbius_hand, &scherbius_action.strategy);
@@ -112,22 +111,22 @@ pub fn process_step(
         let mut turing_vp_won_in_battle = 0;
 
         if let Some(winner) = winner_option {
-            let reward_for_battle = ¤t_state.rewards[i]; // Use current_state
+            let reward_for_battle = &current_state.rewards[i]; // Use current_state
             match winner {
                 Actor::Turing => match reward_for_battle {
                     Reward::VictoryPoints(v) => {
-                        current_state.turing_points += v;
-                        turing_vp_won_in_battle = v;
+                        current_state.turing_points += *v;
+                        turing_vp_won_in_battle = *v;
                     }
                     Reward::NewCards(cards) => {
-                        current_state.turing_hand.extend_from_slice(&cards);
+                        current_state.turing_hand.extend_from_slice(cards);
                         turing_cards_won_in_battle = cards.clone();
                     }
                     Reward::Null => (),
                 },
                 Actor::Scherbius => match reward_for_battle {
-                    Reward::VictoryPoints(v) => current_state.scherbius_points += v,
-                    Reward::NewCards(cards) => current_state.scherbius_hand.extend_from_slice(&cards),
+                    Reward::VictoryPoints(v) => current_state.scherbius_points += *v,
+                    Reward::NewCards(cards) => current_state.scherbius_hand.extend_from_slice(cards),
                     Reward::Null => (),
                 },
                 Actor::Null => (), // Should not happen if winner_option is Some

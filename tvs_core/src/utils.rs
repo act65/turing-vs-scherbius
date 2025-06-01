@@ -1,7 +1,7 @@
 use rand::{
     Rng
 };
-use rand::rngs::StdRng;
+use rand_chacha::ChaCha12Rng;
 
 use rand::seq::SliceRandom;
 
@@ -9,7 +9,7 @@ type Cards = Vec<u32>;
 
 use std::io;
 
-pub fn draw_cards(n: u32, rng: &mut StdRng) -> Cards {
+pub fn draw_cards(n: u32, rng: &mut ChaCha12Rng) -> Cards {
     let mut cards = Vec::new();
 
     for _ in 0..n {
@@ -63,7 +63,7 @@ pub fn remove_chosen_items_from_hand(hand: &mut Vec<u32>, chosen: &[u32]) {
     }
 }
 
-pub fn draw_from_set(deck: &mut Cards, n: usize, rng: &mut StdRng)->Cards {
+pub fn draw_from_set(deck: &mut Cards, n: usize, rng: &mut ChaCha12Rng)->Cards {
     // Draw n cards from a deck
     let mut drawn: Vec<u32> = Vec::new();
     // Use the passed-in rng
@@ -82,7 +82,7 @@ pub fn draw_from_set(deck: &mut Cards, n: usize, rng: &mut StdRng)->Cards {
 }
 
 // for random players
-pub fn get_rnd_strategy(hand: &mut Cards, n: usize, rng: &mut StdRng) -> Vec<Cards> {
+pub fn get_rnd_strategy(hand: &mut Cards, n: usize, rng: &mut ChaCha12Rng) -> Vec<Cards> {
     // randomly choose a strategy from the hand
     let mut strategy: Vec<Cards> = Vec::new();
     while !hand.is_empty() {
@@ -103,12 +103,12 @@ pub fn get_rnd_strategy(hand: &mut Cards, n: usize, rng: &mut StdRng) -> Vec<Car
     strategy
 }
 
-pub fn random_reencryption(rng: &mut StdRng) -> bool {
+pub fn random_reencryption(rng: &mut ChaCha12Rng) -> bool {
     rng.gen_bool(1.0 / 5.0) // 1 in 5 chance of being true
 }
 
 // other utils
-pub fn sample_random_ints(n: u32, max: u32, rng: &mut StdRng) -> Vec<u32> {
+pub fn sample_random_ints(n: u32, max: u32, rng: &mut ChaCha12Rng) -> Vec<u32> {
     (0..n).map(|_| rng.gen_range(1..max)).collect()
 }
 
@@ -157,14 +157,14 @@ fn is_unique_subset(a: &Vec<u32>, b: &Vec<u32>) -> bool {
 mod tests {
     use super::*;
     // use rand::thread_rng; // No longer needed directly in most tests after refactor
-    use rand::rngs::StdRng;
+    use rand_chacha::ChaCha12Rng;
     use rand::SeedableRng;
      // For gen_range, gen_bool if used directly in tests
 
     #[test]
     fn test_sample_random_ints() {
         let seed = [0u8; 32];
-        let mut rng = StdRng::from_seed(seed);
+        let mut rng = ChaCha12Rng::from_seed(seed);
         
         let result = super::sample_random_ints(10, 100, &mut rng);
         assert_eq!(result.len(), 10);
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn test_draw_cards() {
         let seed = [0u8; 32];
-        let mut rng = StdRng::from_seed(seed);
+        let mut rng = ChaCha12Rng::from_seed(seed);
         
         let cards = draw_cards(5, &mut rng);
         assert_eq!(cards.len(), 5);
@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn test_draw_from_set_util() { // Renamed to avoid conflict if a lib.rs test exists
         let seed = [0u8; 32];
-        let mut rng = StdRng::from_seed(seed);
+        let mut rng = ChaCha12Rng::from_seed(seed);
         let mut deck = vec![1, 2, 3, 4, 5];
         let drawn = draw_from_set(&mut deck, 2, &mut rng);
         assert_eq!(drawn.len(), 2);
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_get_rnd_strategy_util() { // Renamed
         let seed = [0u8; 32];
-        let mut rng = StdRng::from_seed(seed);
+        let mut rng = ChaCha12Rng::from_seed(seed);
         let mut hand = vec![1, 2, 3, 4, 5, 6];
         let n_battles = 3;
         let strategy = get_rnd_strategy(&mut hand, n_battles, &mut rng);
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn test_random_reencryption_util() { // Renamed
         let seed = [0u8; 32];
-        let mut rng = StdRng::from_seed(seed);
+        let mut rng = ChaCha12Rng::from_seed(seed);
         // Test a few times to see if we get both true and false, though with fixed seed it will be deterministic
         let _ = random_reencryption(&mut rng); 
         // We can't assert true/false directly without knowing the seeded behavior,

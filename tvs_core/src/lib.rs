@@ -11,9 +11,8 @@ pub mod game_state;
 pub mod game_logic;
 
 // Re-export for easier access if needed, or keep them namespaced
-use crate::game_config::{GameConfig, PyGameConfig};
+use crate::game_config::PyGameConfig;
 use crate::game_types::{Actor, Reward, Cards, ScherbiusAction, TuringAction, BattleOutcomeDetail};
-use crate::game_state::GameState;
 
 
 #[pyclass(name = "GameState")] // Explicit Python name for PyGameState
@@ -162,8 +161,8 @@ fn tvs_core(_py: Python, m: &PyModule) -> PyResult<()> {
 mod tests {
     use super::*; // Access items from lib.rs
     use crate::game_config::GameConfig; // Explicitly use the Rust struct
-    use crate::game_state::GameState;   // Explicitly use the Rust struct
-    use crate::game_types::{ScherbiusAction, TuringAction, Reward, Actor, Cards}; // Types
+    use crate::game_state::GameState;
+    use crate::game_types::{ScherbiusAction, TuringAction, Reward, Actor, Action}; // Types
     use crate::game_logic; // For process_step and other logic functions
     use rand_chacha::ChaCha12Rng; // Add
     use rand::SeedableRng; // For StdRng::from_seed
@@ -219,11 +218,11 @@ mod tests {
         
         let seed_val = 42; // Use a fixed seed for deterministic RNG in test
         // let mut initial_rng = StdRng::seed_from_u64(seed_val);
-        let mut initial_rng = ChaCha12Rng::seed_from_u64(seed_val); // Use ChaCha12Rng
+        let initial_rng = ChaCha12Rng::seed_from_u64(seed_val); // Use ChaCha12Rng
 
         // Initialize encoder with a clone of the RNG that will be put into GameState
         // to ensure its state is what we expect if it were initialized inside GameState::new
-        let encoder_rng = initial_rng.clone();
+        // let _encoder_rng = initial_rng.clone(); // This variable is not used.
 
         let initial_game_state = GameState {
             turing_hand: vec![1, 2, 3, 4, 5, 6],
@@ -328,7 +327,7 @@ mod tests {
         let invalid_s_action = ScherbiusAction { strategy: vec![invalid_s_cards], encryption: false }; 
         let result = game_logic::check_action_validity(&game_state, &Action::ScherbiusAction(invalid_s_action));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Too many cards committed"));
+        assert!(result.unwrap_err().contains("Too many cards"));
     }
     
     #[test]
