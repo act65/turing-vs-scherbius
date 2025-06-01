@@ -1,5 +1,5 @@
 import tvs_core as tvs # Assuming this is the actual library
-from . import utils
+import utils
 
 class GameManager:
     def __init__(self, game_config):
