@@ -2,9 +2,13 @@ Core
 - add the option to use a reflector?
 - reset the engima steps every round
 - change to be a finite deck of cards
+- change game_state.step to be functional! 
 
 RL
 - mcts. can share value fn between scherbius and turing
+- autoregressive transformer for generating card allocations
+    - order of cards in hand doesnt matter.
+    - inputs: rewards, scherbius' plays (if Turning policy), allocations so far, current hand.
 
 Site
 - display config variables at top
