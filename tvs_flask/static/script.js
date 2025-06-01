@@ -31,6 +31,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextRoundBtnEl = document.getElementById('nextRoundBtn');
     const historicalRoundIndicatorEl = document.getElementById('historicalRoundIndicator');
 
+    // -- Config DOM elements
+    //     // Elements for config values already in client_data but now explicitly in summary HTML
+    const nBattlesEl = document.getElementById('nBattles');
+    const maxCardsPerBattleEl = document.getElementById('maxCardsPerBattle');
+
+    // New DOM elements for GAME_CONFIG additions
+    const maxHandSizeEl = document.getElementById('maxHandSize');
+    const scherbiusStartingCardsEl = document.getElementById('scherbiusStartingCards');
+    const scherbiusCardsDealEl = document.getElementById('scherbiusCardsDeal');
+    const turingStartingCardsEl = document.getElementById('turingStartingCards');
+    const turingCardsDealEl = document.getElementById('turingCardsDeal');
+    const encryptionCostEl = document.getElementById('encryptionCost');
+    const encryptionVocabSizeEl = document.getElementById('encryptionVocabSize');
+    const encryptionKRotorsEl = document.getElementById('encryptionKRotors');
+    const maxVpRewardPerBattleEl = document.getElementById('maxVpRewardPerBattle');
+    const maxCardRewardPerBattleEl = document.getElementById('maxCardRewardPerBattle');
+
+
+
     // Helper function to get current player's hand DOM element
     function getCurrentPlayerHandEl() {
         if (!clientState.playerRole) return null;
@@ -86,6 +105,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelector('.game-controls').style.display = 'none';
         gameAreaEl.style.display = 'block';
+
+    // Update general game rule elements
+        if (nBattlesEl) nBattlesEl.textContent = serverState.n_battles;
+        if (maxCardsPerBattleEl) maxCardsPerBattleEl.textContent = serverState.max_cards_per_battle;
+        if (maxHandSizeEl) maxHandSizeEl.textContent = serverState.max_hand_size;
+        if (maxVpRewardPerBattleEl) maxVpRewardPerBattleEl.textContent = serverState.max_vp_reward_per_battle;
+        if (maxCardRewardPerBattleEl) maxCardRewardPerBattleEl.textContent = serverState.max_card_reward_per_battle;
+        
+        // Update player-specific config elements
+        if (scherbiusStartingCardsEl) scherbiusStartingCardsEl.textContent = serverState.scherbius_starting_cards;
+        if (scherbiusCardsDealEl) scherbiusCardsDealEl.textContent = serverState.scherbius_cards_deal_per_round;
+        if (turingStartingCardsEl) turingStartingCardsEl.textContent = serverState.turing_starting_cards;
+        if (turingCardsDealEl) turingCardsDealEl.textContent = serverState.turing_cards_deal_per_round;
+
+        // Update encryption config elements
+        if (encryptionCostEl) encryptionCostEl.textContent = serverState.encryption_cost;
+        if (encryptionVocabSizeEl) encryptionVocabSizeEl.textContent = serverState.encryption_vocab_size;
+        if (encryptionKRotorsEl) encryptionKRotorsEl.textContent = serverState.encryption_k_rotors;
 
         clientState.playerRole = serverState.player_role;
 

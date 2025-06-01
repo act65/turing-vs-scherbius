@@ -7,15 +7,19 @@ import tvs_core as tvs
 app = Flask(__name__)
 
 GAME_CONFIG = tvs.PyGameConfig(
-    scherbius_starting=7, scherbius_deal=2,
-    turing_starting=5, turing_deal=1,
-    victory_points=100, n_battles=4,
+    scherbius_starting=7, 
+    scherbius_deal=2,
+    turing_starting=5, 
+    turing_deal=1,
+    victory_points=100, 
+    n_battles=4,
     encryption_cost=10,
     encryption_vocab_size=10,
     encryption_k_rotors=1,
     verbose=False,
     max_vp=10, max_draw=3,
-    max_cards_per_battle=3, max_hand_size=30
+    max_cards_per_battle=3, 
+    max_hand_size=30
 )
 
 game_state = {
@@ -38,8 +42,8 @@ def scherbius_ai_player(hand, num_battles): # Renamed from ai_player for clarity
     random.shuffle(hand_copy)
     for i in range(num_battles):
         if not hand_copy: break
-        if random.random() < 0.6: # Scherbius AI might be a bit more conservative or random
-            num_cards_to_play = random.randint(1, min(GAME_CONFIG.max_cards_per_battle, len(hand_copy), 2)) # Play 1 or 2
+        if random.random() < 0.9:
+            num_cards_to_play = random.randint(1, min(GAME_CONFIG.max_cards_per_battle, len(hand_copy)))
             for _ in range(num_cards_to_play):
                 if hand_copy:
                     strategy[i].append(hand_copy.pop())
@@ -52,13 +56,12 @@ def turing_ai_player(hand, num_battles):
     random.shuffle(hand_copy)
     for i in range(num_battles):
         if not hand_copy: break
-        if random.random() < 0.7: # Turing AI might be slightly more aggressive
-            num_cards_to_play = random.randint(1, min(GAME_CONFIG.max_cards_per_battle, len(hand_copy), 2)) # Play 1 or 2
+        if random.random() < 0.7:
+            num_cards_to_play = random.randint(1, min(GAME_CONFIG.max_cards_per_battle, len(hand_copy)))
             for _ in range(num_cards_to_play):
                 if hand_copy:
                     strategy[i].append(hand_copy.pop())
     return strategy
-
 
 def prepare_round_start_data(is_new_round_for_player=True):
     global game_state
@@ -75,6 +78,7 @@ def prepare_round_start_data(is_new_round_for_player=True):
             current_phase = "Turing_Action"
             # AI Scherbius plans
             scherbius_ai_hand = game.scherbius_observation() # Deals cards to AI Scherbius
+            # Assuming scherbius_ai_player is defined elsewhere
             s_strategy, s_encrypts = scherbius_ai_player(scherbius_ai_hand, GAME_CONFIG.n_battles)
             game_state["scherbius_planned_strategy"] = s_strategy
             game_state["scherbius_planned_encryption"] = s_encrypts
@@ -115,14 +119,24 @@ def prepare_round_start_data(is_new_round_for_player=True):
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards},
         "turing_points": game.turing_points(),
         "scherbius_points": game.scherbius_points(),
-        "max_victory_points": GAME_CONFIG.victory_points,
-        "n_battles": GAME_CONFIG.n_battles,
-        "max_cards_per_battle": GAME_CONFIG.max_cards_per_battle,
+        "max_victory_points": GAME_CONFIG.victory_points, # Already present
+        "n_battles": GAME_CONFIG.n_battles, # Already present
+        "max_cards_per_battle": GAME_CONFIG.max_cards_per_battle, # Already present
         "is_game_over": game.is_won(),
         "winner": game.winner() if game.is_won() else "Null",
         "last_round_summary": game_state["last_round_summary"],
         "current_phase": current_phase,
-        "round_history": game_state["round_history"]
+        "round_history": game_state["round_history"],
+        "scherbius_starting_cards": GAME_CONFIG.scherbius_starting,
+        "scherbius_cards_deal_per_round": GAME_CONFIG.scherbius_deal,
+        "turing_starting_cards": GAME_CONFIG.turing_starting,
+        "turing_cards_deal_per_round": GAME_CONFIG.turing_deal,
+        "encryption_cost": GAME_CONFIG.encryption_cost,
+        "encryption_vocab_size": GAME_CONFIG.encryption_vocab_size,
+        "encryption_k_rotors": GAME_CONFIG.encryption_k_rotors,
+        "max_vp_reward_per_battle": GAME_CONFIG.max_vp,
+        "max_card_reward_per_battle": GAME_CONFIG.max_draw,
+        "max_hand_size": GAME_CONFIG.max_hand_size,
     }
 
     if is_new_round_for_player and not game.is_won(): # Clear summary only if it's truly a new turn setup

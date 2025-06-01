@@ -453,3 +453,121 @@ button:disabled {
     margin-left: 10px;
     font-size: 0.9em;
 }
+
+/* summary of config */
+.scores-summary-box {
+    border: 1px solid #ccc;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.scores-summary-box h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.4em;
+}
+
+/* Common styles for ALL tables in the summary box */
+.summary-table {
+    border-collapse: collapse;
+    font-size: 0.85em; /* Slightly smaller font for very compact tables */
+    margin-bottom: 15px; /* Default bottom margin */
+    /* width: 100%; */ /* Remove default full width, will be controlled by parent or specific ID/class */
+}
+
+.summary-table caption {
+    font-weight: bold;
+    text-align: left;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    font-size: 1.05em; /* Adjusted caption size */
+}
+
+.summary-table td {
+    padding: 3px 6px; /* Reduced padding for compactness */
+    border: 1px solid #e0e0e0;
+    vertical-align: top; /* Align content to top if rows have different heights */
+}
+
+/* Default TD widths - applies to scores table and config tables when stacked */
+.summary-table td:first-child {
+    text-align: left;
+    width: 60%; /* Default label column width */
+}
+
+.summary-table td:last-child {
+    text-align: right;
+    font-weight: bold;
+    width: 40%; /* Default value column width */
+}
+
+.summary-table tbody tr:nth-child(even) {
+    background-color: #f0f0f0;
+}
+.summary-table tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* --- Styles for specific table layouts --- */
+
+/* Game Scores table always full width */
+#game-scores-table {
+    width: 100%;
+}
+
+/* Wrapper for the three horizontal config tables */
+.config-tables-wrapper {
+    display: flex;
+    justify-content: space-between; /* Distribute space between tables */
+    gap: 10px; /* Space between the config tables */
+    margin-top: 10px; /* Space below the scores table */
+    flex-wrap: wrap; /* Allow tables to wrap if not enough space */
+}
+
+/* Individual config tables within the flex wrapper */
+.config-table {
+    flex: 1 1 auto; /* Allow tables to grow and shrink, auto basis */
+    min-width: 180px; /* Minimum width before wrapping or squishing too much */
+    margin-bottom: 0; /* Remove bottom margin as 'gap' handles spacing */
+    width: auto; /* Override any inherited width: 100% */
+}
+
+/* Adjust TD widths for config tables when they are side-by-side */
+/* This applies when the screen is wide enough for them to be horizontal */
+@media (min-width: 769px) { /* Adjust breakpoint as needed */
+    .config-table td:first-child {
+        width: 65%; /* Or 'auto' if you want content to dictate more */
+    }
+    .config-table td:last-child {
+        width: 35%; /* Or 'auto' */
+    }
+}
+
+
+/* Responsive: Stack config tables on smaller screens */
+@media (max-width: 768px) { /* Adjust this breakpoint as needed */
+    .config-tables-wrapper {
+        flex-direction: column; /* Stack them vertically */
+        gap: 15px; /* Vertical gap when stacked */
+    }
+
+    .config-table {
+        width: 100%; /* Make each config table full width when stacked */
+        min-width: 0; /* Reset min-width */
+        margin-bottom: 15px; /* Add margin back if gap isn't enough or preferred */
+    }
+    .config-table:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Ensure default TD widths apply when stacked if they were changed for horizontal */
+    .config-table td:first-child {
+        width: 60%; /* Back to default or desired stacked width */
+    }
+    .config-table td:last-child {
+        width: 40%; /* Back to default or desired stacked width */
+    }
+}
