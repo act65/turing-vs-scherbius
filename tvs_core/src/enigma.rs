@@ -1,6 +1,8 @@
 use rand::Rng;
 use rand::seq::SliceRandom; // For shuffling to create permutations
 
+use serde::{Serialize, Deserialize};
+
 /// Generates a random permutation of numbers from 0 to n-1.
 fn generate_permutation(n: u32, rng: &mut impl Rng) -> Vec<u32> {
     let mut perm: Vec<u32> = (0..n).collect();
@@ -52,7 +54,7 @@ fn generate_reflector(n: u32, rng: &mut impl Rng) -> Vec<u32> {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EasyEnigma {
     rotor_wirings: Vec<Vec<u32>>,     // Generalized from array to Vec
     rotor_inv_wirings: Vec<Vec<u32>>, // Generalized from array to Vec
