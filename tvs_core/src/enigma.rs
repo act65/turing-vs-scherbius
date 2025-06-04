@@ -54,7 +54,7 @@ fn generate_reflector(n: u32, rng: &mut impl Rng) -> Vec<u32> {
 }
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EasyEnigma {
     rotor_wirings: Vec<Vec<u32>>,     // Generalized from array to Vec
     rotor_inv_wirings: Vec<Vec<u32>>, // Generalized from array to Vec
@@ -179,15 +179,13 @@ impl EasyEnigma {
         self.reflector_wiring = reflector_wiring;
     }
 
-    #[cfg(test)]
     pub fn get_steps(&self) -> &Vec<u32> { // Return type changed
         &self.step
     }
-    #[cfg(test)]
     pub fn get_rotor_wirings(&self) -> &Vec<Vec<u32>> { // Return type changed
         &self.rotor_wirings
     }
-    #[cfg(test)]
+    // Make get_reflector_wiring public as well for consistency, though not strictly needed by current test
     pub fn get_reflector_wiring(&self) -> &Vec<u32> {
         &self.reflector_wiring
     }

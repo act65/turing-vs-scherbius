@@ -142,13 +142,21 @@ fn py_process_step(
 
 #[pyfunction]
 fn py_intercept_scherbius_strategy(
-    state: &mut PyGameState, // Takes a mutable reference to modify PyGameState.inner.encoder
+    py: Python,
+    state: &PyGameState, // Now an immutable reference
     scherbius_strategy: Vec<Cards>,
-) -> PyResult<(Vec<u32>, Vec<Cards>)> {
-    // This function mutates state.inner.encoder
-    let intercepted_strategy =
-        game_logic::intercept_scherbius_strategy(&mut state.inner, &scherbius_strategy);
-    Ok((state.inner.turing_hand.clone(), intercepted_strategy))
+) -> PyResult<(Py<PyGameState>, Vec<u32>, Vec<Cards>)> {
+    // Call the modified game_logic function
+    let (new_encoder, intercepted_cards) =
+        game_logic::intercept_scherbius_strategy(&state.inner, &scherbius_strategy);
+
+    // Create a new PyGameState
+    let mut new_inner_game_state = state.inner.clone();
+    new_inner_game_state.encoder = new_encoder;
+
+    let new_py_game_state = Py::new(py, PyGameState { inner: new_inner_game_state })?;
+
+    Ok((new_py_game_state, state.inner.turing_hand.clone(), intercepted_cards))
 }
 
 
@@ -177,6 +185,7 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
     use rand::SeedableRng;
     use std::sync::Arc;
+    use crate::enigma::EasyEnigma; // Ensure EasyEnigma is in scope for tests
 
     // create_test_config remains the same
     fn create_test_config(n_battles: u32, max_hand_size: u32, max_cards_per_battle: u32) -> Arc<GameConfig> {
@@ -464,5 +473,98 @@ mod tests {
         assert_eq!(game.turing_points, 0);
         assert_eq!(game.scherbius_points, 0);
         assert_eq!(game.winner, Actor::Null);
+    }
+
+    #[test]
+    fn test_intercept_scherbius_strategy_clones_and_returns_encoder() {
+        let config = create_test_config(1, 5, 2); // n_battles, max_hand_size, max_cards_per_battle
+        let initial_game_state = GameState::new(Arc::clone(&config), Some(999));
+
+        // Clone the original encoder for later comparison
+        let original_encoder_clone = initial_game_state.encoder.clone();
+        let original_steps_before_call = original_encoder_clone.get_steps().clone(); // Clone to avoid borrowing issues
+        let original_wirings_before_call = original_encoder_clone.get_rotor_wirings().clone();
+
+        let scherbius_strategy: Vec<Cards> = vec![vec![1, 2], vec![3]]; // Example strategy
+
+        // Execute the function
+        let (returned_encoder, intercepted_strategy) =
+            game_logic::intercept_scherbius_strategy(&initial_game_state, &scherbius_strategy);
+
+        // Assertions
+        assert_eq!(
+            intercepted_strategy.len(),
+            scherbius_strategy.len(),
+            "Intercepted strategy should have the same number of turns as the input strategy."
+        );
+
+        // Check that the original encoder in game_state is unchanged
+        assert_eq!(
+            initial_game_state.encoder.get_rotor_wirings(),
+            &original_wirings_before_call, // Compare with the cloned wirings
+            "Original game state encoder wirings should not change."
+        );
+        assert_eq!(
+            initial_game_state.encoder.get_steps(),
+            &original_steps_before_call, // Compare with the cloned steps
+            "Original game state encoder steps should not change."
+        );
+        // Also, good to ensure the full original encoder is identical if PartialEq is reliable
+        assert_eq!(
+            &initial_game_state.encoder,
+            &original_encoder_clone,
+            "The entire original encoder in game_state should be unchanged."
+        );
+
+
+        // Check that the returned encoder has advanced
+        // The number of steps taken by the returned_encoder should be equal to the number of cards in the strategy.
+        let expected_steps_taken: u32 = scherbius_strategy.iter().map(|cards| cards.len() as u32).sum();
+
+        // We need to calculate the expected final state of the steps vector.
+        // This is a bit complex due to odometer stepping.
+        // For simplicity, we'll check that steps are different and specifically that the first rotor moved.
+        // A more robust check would involve simulating the steps.
+
+        // We know that `call` was invoked scherbius_strategy.len() times on the cloned encoder.
+        // Each of those calls could involve multiple `call_char` if cards within a strategy element are processed individually.
+        // The `intercept_scherbius_strategy` calls `cloned_encoder.call(h)` for each `h` in `strategy`.
+        // The `EasyEnigma::call` method iterates `call_char` for each u32 in its input Vec.
+        // So, total `call_char` invocations = sum of lengths of Vecs in `scherbius_strategy`.
+        // Total calls to `cloned_encoder.call()` = `scherbius_strategy.len()`.
+        // The `EasyEnigma::step` advances after each `call_char`.
+
+        let total_chars_processed = scherbius_strategy.iter().flatten().count();
+
+        if total_chars_processed > 0 {
+             assert_ne!(
+                returned_encoder.get_steps(),
+                &original_steps_before_call,
+                "Returned encoder steps should have advanced."
+            );
+            // If strategy is not empty, the returned encoder should have advanced from its initial state (all zeros or cloned state)
+            // The original_encoder_clone was cloned *before* any calls. Its steps are the initial steps.
+            // The returned_encoder is a clone that *has* been called. So its steps should be different.
+            assert_ne!(
+                returned_encoder.get_steps(),
+                initial_game_state.encoder.get_steps(), // This is original_steps_before_call
+                "Returned encoder steps should be different from the original unchanged steps."
+            );
+
+        } else {
+            // If strategy is empty, encoder should not have advanced.
+            assert_eq!(
+                returned_encoder.get_steps(),
+                &original_steps_before_call,
+                "Returned encoder steps should not have advanced for an empty strategy."
+            );
+        }
+
+        // Wirings of the returned encoder should be the same as original, only steps change
+        assert_eq!(
+            returned_encoder.get_rotor_wirings(),
+            &original_wirings_before_call,
+            "Returned encoder wirings should be the same as original."
+        );
     }
 }

@@ -45,8 +45,10 @@ pub fn random_rewards(n: u32, max_vp: u32, max_draw: u32, rng: &mut ChaCha12Rng)
 }
 
 // Logic for Scherbius intercepting strategy (mutates encoder in state)
-pub fn intercept_scherbius_strategy(state: &mut GameState, strategy: &[Cards]) -> Vec<Cards> {
-    strategy.iter().map(|h| state.encoder.call(h)).collect()
+pub fn intercept_scherbius_strategy(state: &GameState, strategy: &[Cards]) -> (enigma::EasyEnigma, Vec<Cards>) {
+    let mut cloned_encoder = state.encoder.clone();
+    let intercepted_cards_vector = strategy.iter().map(|h| cloned_encoder.call(h)).collect();
+    (cloned_encoder, intercepted_cards_vector)
 }
 
 // Validates a player's action
