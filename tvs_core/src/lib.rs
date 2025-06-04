@@ -145,7 +145,7 @@ fn py_intercept_scherbius_strategy(
     py: Python,
     state: &PyGameState, // Now an immutable reference
     scherbius_strategy: Vec<Cards>,
-) -> PyResult<(Py<PyGameState>, Vec<u32>, Vec<Cards>)> {
+) -> PyResult<(Py<PyGameState>, Vec<Cards>)> {
     // Call the modified game_logic function
     let (new_encoder, intercepted_cards) =
         game_logic::intercept_scherbius_strategy(&state.inner, &scherbius_strategy);
@@ -156,7 +156,7 @@ fn py_intercept_scherbius_strategy(
 
     let new_py_game_state = Py::new(py, PyGameState { inner: new_inner_game_state })?;
 
-    Ok((new_py_game_state, state.inner.turing_hand.clone(), intercepted_cards))
+    Ok((new_py_game_state, intercepted_cards))
 }
 
 
