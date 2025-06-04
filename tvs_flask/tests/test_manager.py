@@ -1,7 +1,12 @@
 import pytest
 from unittest.mock import patch, MagicMock, ANY
+<<<<<<< HEAD
 from ..manager import GameManager
 from .. import utils # For get_initial_state
+=======
+from manager import GameManager
+import utils # For get_initial_state
+>>>>>>> feat/pure-intercept-scherbius
 from .conftest import MockGameConfig, MockPyGameState # Import mocks from conftest
 
 # This ensures that when GameManager imports tvs_core, it gets our mock
@@ -45,7 +50,7 @@ def test_new_game_valid_role(manager, game_config, mock_tvs_core):
         client_data, error = manager.new_game("Turing")
         assert error is None
         assert client_data == "prepared_data_turing"
-        assert isinstance(manager.state["game_instance"], mock_tvs_core.PyGameState)
+        assert isinstance(manager.state["game_state"], mock_tvs_core.PyGameState)
         assert manager.state["player_role"] == "Turing"
         mock_prepare.assert_called_once_with(is_new_round_for_player=True)
         # Check PyGameState was instantiated with the config
@@ -60,7 +65,7 @@ def test_new_game_valid_role(manager, game_config, mock_tvs_core):
         client_data, error = manager.new_game("Scherbius")
         assert error is None
         assert client_data == "prepared_data_scherbius"
-        assert isinstance(manager.state["game_instance"], mock_tvs_core.PyGameState)
+        assert isinstance(manager.state["game_state"], mock_tvs_core.PyGameState)
         assert manager.state["player_role"] == "Scherbius"
         mock_prepare.assert_called_once_with(is_new_round_for_player=True)
         mock_tvs_core.PyGameState.assert_called_with(game_config)
@@ -73,7 +78,7 @@ def test_get_current_game_state_for_client(manager, mock_game_state_factory):
     assert error == "Game not started. Please select a role to start a new game."
 
     # Case 2: Game started, last_client_data_prepared exists
-    manager.state["game_instance"] = mock_game_state_factory()
+    manager.state["game_state"] = mock_game_state_factory()
     manager.state["player_role"] = "Turing"
     manager.state["last_client_data_prepared"] = {"data": "cached"}
     client_data, error = manager.get_current_game_state_for_client()
@@ -88,7 +93,7 @@ def test_get_current_game_state_for_client(manager, mock_game_state_factory):
         assert client_data == {"data": "freshly_prepared"}
         mock_prepare.assert_called_once_with(is_new_round_for_player=False)
     
-    # Case 4: Inconsistent state (game_instance exists, but no player_role)
+    # Case 4: Inconsistent state (game_state exists, but no player_role)
     manager.state["player_role"] = None
     manager.state["last_client_data_prepared"] = None # Ensure prepare is not hit due to cache
     client_data, error = manager.get_current_game_state_for_client()
@@ -97,7 +102,7 @@ def test_get_current_game_state_for_client(manager, mock_game_state_factory):
 
 
 def test_prepare_round_start_data_turing_player(manager, game_config, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Turing"
     manager.state["player_initial_hand_for_turn"] = [] # Ensure it's fresh
 
@@ -121,7 +126,7 @@ def test_prepare_round_start_data_turing_player(manager, game_config, mock_game_
     assert manager.state["last_round_summary"] is None # is_new_round_for_player=True
 
 def test_prepare_round_start_data_scherbius_player(manager, game_config, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Scherbius"
     manager.state["player_initial_hand_for_turn"] = []
 
@@ -138,7 +143,7 @@ def test_prepare_round_start_data_scherbius_player(manager, game_config, mock_ga
     assert client_data["player_hand"][0]["value"] == mock_game_state.scherbius_hand_cards[0]
 
 def test_prepare_round_start_data_game_over(manager, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Turing"
     mock_game_state._set_won_state(True, "Turing", 10, 5)
 
@@ -156,13 +161,13 @@ def test_submit_player_action_game_over_or_not_init(manager, mock_game_state):
     assert error == "Game is over or not initialized."
 
     # Game over
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     mock_game_state._set_won_state(True, "Turing", 10, 0)
     _, error = manager.submit_player_action([[]]*manager.config.n_battles)
     assert error == "Game is over or not initialized."
 
 def test_submit_player_action_invalid_strategy_format(manager, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Turing"
     mock_game_state._set_won_state(False, "Null", 0, 0) # Game ongoing
 
@@ -173,7 +178,7 @@ def test_submit_player_action_invalid_strategy_format(manager, mock_game_state):
     assert error == "Invalid player strategy format."
 
 def test_submit_player_action_turing_player(manager, game_config, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Turing"
     # AI Scherbius plan needs to be in state (set by prepare_round_start_data)
     manager.state["scherbius_planned_strategy"] = [[1],[1],[1]] # Mocked AI plan
@@ -203,7 +208,7 @@ def test_submit_player_action_turing_player(manager, game_config, mock_game_stat
     mock_prepare.assert_called_once_with(is_new_round_for_player=not mock_game_state.is_won())
 
 def test_submit_player_action_scherbius_player(manager, game_config, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Scherbius"
     mock_game_state._set_points(0,0)
     # manager._turing_ai_fn is already mocked in the manager fixture to return [[2],[2]]
@@ -249,7 +254,7 @@ def test_submit_player_action_scherbius_player(manager, game_config, mock_game_s
     mock_prepare.assert_called_once_with(is_new_round_for_player=not mock_game_state.is_won())
 
 def test_submit_player_action_turing_player_ai_scherbius_plan_missing(manager, mock_game_state):
-    manager.state["game_instance"] = mock_game_state
+    manager.state["game_state"] = mock_game_state
     manager.state["player_role"] = "Turing"
     manager.state["scherbius_planned_strategy"] = None # Simulate missing plan
     mock_game_state._set_won_state(False, "Null", 0, 0)

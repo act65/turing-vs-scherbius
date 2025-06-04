@@ -12,7 +12,7 @@ def test_get_initial_state():
     state = utils.get_initial_state()
     assert isinstance(state, dict)
     expected_keys = [
-        "game_instance", "player_role", "scherbius_planned_strategy",
+        "game_state", "player_role", "scherbius_planned_strategy",
         "scherbius_planned_encryption", "turing_planned_strategy",
         "last_round_summary", "round_history", "current_round_potential_rewards",
         "last_client_data_prepared", "player_initial_hand_for_turn"
