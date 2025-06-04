@@ -108,14 +108,19 @@ pub fn process_step(
         let t_sum = t_cards.iter().sum::<u32>();
         let s_sum = s_cards.iter().sum::<u32>();
         let winner_option = battle_result(s_cards, t_cards);
+        let reward_for_this_battle = current_state.rewards[i].clone(); // Clone reward for storing
 
         let mut turing_cards_won_in_battle = Vec::new();
         let mut turing_vp_won_in_battle = 0;
+        let mut scherbius_cards_won_in_battle = Vec::new();
+        let mut scherbius_vp_won_in_battle = 0;
+
+        let actual_battle_winner = winner_option.unwrap_or(Actor::Null); // Handle draw case
 
         if let Some(winner) = winner_option {
-            let reward_for_battle = &current_state.rewards[i]; // Use current_state
+            // The reward_for_this_battle is applied based on who won
             match winner {
-                Actor::Turing => match reward_for_battle {
+                Actor::Turing => match &reward_for_this_battle {
                     Reward::VictoryPoints(v) => {
                         current_state.turing_points += *v;
                         turing_vp_won_in_battle = *v;
@@ -126,19 +131,34 @@ pub fn process_step(
                     }
                     Reward::Null => (),
                 },
-                Actor::Scherbius => match reward_for_battle {
-                    Reward::VictoryPoints(v) => current_state.scherbius_points += *v,
-                    Reward::NewCards(cards) => current_state.scherbius_hand.extend_from_slice(cards),
+                Actor::Scherbius => match &reward_for_this_battle {
+                    Reward::VictoryPoints(v) => {
+                        current_state.scherbius_points += *v;
+                        scherbius_vp_won_in_battle = *v; // Track Scherbius VP
+                    }
+                    Reward::NewCards(cards) => {
+                        current_state.scherbius_hand.extend_from_slice(cards);
+                        scherbius_cards_won_in_battle = cards.clone(); // Track Scherbius cards
+                    }
                     Reward::Null => (),
                 },
-                Actor::Null => (), // Should not happen if winner_option is Some
+                Actor::Null => (), // This case within Some(winner) should ideally not be hit if battle_result only returns Some(Scherbius), Some(Turing), or None.
             }
         }
+        // If winner_option was None (a draw), no points/cards are awarded from the reward_for_this_battle.
+
         detailed_outcomes.push(BattleOutcomeDetail {
-            turing_sum: t_sum,
+            battle_index: i as u32, // The current battle index
+            scherbius_cards_played: s_cards.clone(), // Cards Scherbius played in this battle
+            turing_cards_played: t_cards.clone(),    // Cards Turing played in this battle
             scherbius_sum: s_sum,
-            turing_cards_won: turing_cards_won_in_battle,
+            turing_sum: t_sum,
+            battle_winner: actual_battle_winner, // Winner of this specific battle
+            reward_applied: reward_for_this_battle, // The reward that was up for grabs in this battle
+            scherbius_vp_won: scherbius_vp_won_in_battle,
+            scherbius_cards_won: scherbius_cards_won_in_battle,
             turing_vp_won: turing_vp_won_in_battle,
+            turing_cards_won: turing_cards_won_in_battle,
         });
     }
 

@@ -46,7 +46,7 @@ pub type TuringPlayer = fn(&Vec<u32>, &Vec<Reward>, &Vec<Cards>) -> TuringAction
 
 
 
-#[pyclass(clone)] // Keep clone for Py::new
+#[pyclass] // Keep clone for Py::new
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)] // serde for potential raw state, PartialEq for tests
 pub struct BattleOutcomeDetail {
     // Public fields for Rust internal use
