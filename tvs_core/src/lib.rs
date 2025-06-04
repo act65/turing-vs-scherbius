@@ -185,7 +185,7 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
     use rand::SeedableRng;
     use std::sync::Arc;
-    use crate::enigma::EasyEnigma; // Ensure EasyEnigma is in scope for tests
+     // Ensure EasyEnigma is in scope for tests
 
     // create_test_config remains the same
     fn create_test_config(n_battles: u32, max_hand_size: u32, max_cards_per_battle: u32) -> Arc<GameConfig> {
@@ -519,7 +519,7 @@ mod tests {
 
         // Check that the returned encoder has advanced
         // The number of steps taken by the returned_encoder should be equal to the number of cards in the strategy.
-        let expected_steps_taken: u32 = scherbius_strategy.iter().map(|cards| cards.len() as u32).sum();
+        let _expected_steps_taken: u32 = scherbius_strategy.iter().map(|cards| cards.len() as u32).sum();
 
         // We need to calculate the expected final state of the steps vector.
         // This is a bit complex due to odometer stepping.

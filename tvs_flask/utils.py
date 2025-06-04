@@ -1,9 +1,10 @@
 import random
+import tvs_core
 
 def get_initial_state():
     """Returns the initial structure for the game state."""
     return {
-        "game_instance": None,
+        "game_state": None,
         "player_role": None,
         "scherbius_planned_strategy": None,
         "scherbius_planned_encryption": False,
@@ -46,7 +47,7 @@ def turing_ai_player_logic(hand, num_battles, max_cards_per_battle):
                     strategy[i].append(hand_copy.pop())
     return strategy
 
-def handle_pre_turn_observations_and_ai(game_instance, player_role, config, scherbius_ai_logic_fn):
+def handle_pre_turn_observations_and_ai(game_state, player_role, config, scherbius_ai_logic_fn):
     """
     Handles observations and AI planning at the start of a round.
     """
@@ -59,7 +60,7 @@ def handle_pre_turn_observations_and_ai(game_instance, player_role, config, sche
 
     if player_role == "Turing":
         current_phase = "Turing_Action"
-        scherbius_ai_hand = game_instance.scherbius_observation()
+        scherbius_ai_hand = game_state.scherbius_hand
         s_strategy, s_encrypts = scherbius_ai_logic_fn(
             scherbius_ai_hand, config.n_battles, config.max_cards_per_battle
         )
@@ -67,17 +68,17 @@ def handle_pre_turn_observations_and_ai(game_instance, player_role, config, sche
         scherbius_planned_encryption = s_encrypts
         scherbius_encryption_status_for_view = s_encrypts
 
-        turing_hand_val, intercepted_plays = game_instance.turing_observation(s_strategy)
-        current_player_hand_values = turing_hand_val
+        game_state, intercepted_plays = tvs_core.py_intercept_scherbius_strategy(game_state, s_strategy)
+        current_player_hand_values = game_state.turing_hand
         opponent_observed_plays_for_player = intercepted_plays
 
     elif player_role == "Scherbius":
         current_phase = "Scherbius_Action"
-        scherbius_hand_val = game_instance.scherbius_observation()
+        scherbius_hand_val = game_state.scherbius_hand
         current_player_hand_values = scherbius_hand_val
         # scherbius_encryption_status_for_view is False as Player Scherbius decides
 
-    return {
+    return game_state, {
         "current_phase": current_phase,
         "scherbius_planned_strategy": scherbius_planned_strategy,
         "scherbius_planned_encryption": scherbius_planned_encryption,
@@ -92,14 +93,17 @@ def prepare_player_hand_for_display(current_player_hand_values, existing_player_
     Returns (hand_for_client, hand_to_store_in_state).
     """
     if is_new_round_for_player or not existing_player_initial_hand:
+        # If it's a new round or no existing hand structure, create fresh items.
         new_initial_hand = [
-            {"id": f"pcard_{idx}", "value": val} for idx, val in enumerate(current_player_hand_values)
+            {"id": f"pcard_{idx}", "value": val} for idx, val in enumerate(current_player_hand_values) # Corrected typo
         ]
         return new_initial_hand, new_initial_hand
+    # If not a new round and an existing structure is present, reuse it for client display consistency.
+    # This is typically for refreshing the view without advancing the game turn.
     return existing_player_initial_hand, existing_player_initial_hand
 
 def assemble_client_data_for_round_start(
-    game_instance, player_role, config, game_state_snapshot,
+    game_state, player_role, config, game_state_snapshot,
     player_hand_for_client, opponent_observed_plays,
     scherbius_did_encrypt_view, current_phase
 ):
@@ -107,7 +111,7 @@ def assemble_client_data_for_round_start(
     Assembles the comprehensive client data dictionary.
     `game_state_snapshot` contains `last_round_summary`, `round_history`.
     """
-    card_rewards, vp_rewards = game_instance.rewards()
+    card_rewards, vp_rewards = game_state.rewards
 
     client_data = {
         "player_role": player_role,
@@ -115,13 +119,13 @@ def assemble_client_data_for_round_start(
         "opponent_observed_plays": opponent_observed_plays,
         "scherbius_did_encrypt": scherbius_did_encrypt_view,
         "rewards": {"card_rewards": card_rewards, "vp_rewards": vp_rewards},
-        "turing_points": game_instance.turing_points(),
-        "scherbius_points": game_instance.scherbius_points(),
+        "turing_points": game_state.turing_points,
+        "scherbius_points": game_state.scherbius_points,
         "max_victory_points": config.victory_points,
         "n_battles": config.n_battles,
         "max_cards_per_battle": config.max_cards_per_battle,
-        "is_game_over": game_instance.is_won(),
-        "winner": game_instance.winner() if game_instance.is_won() else "Null",
+        "is_game_over": game_state.is_won,
+        "winner": game_state.winner if game_state.is_won else "Null",
         "last_round_summary": game_state_snapshot.get("last_round_summary"),
         "current_phase": current_phase,
         "round_history": game_state_snapshot.get("round_history", []),
@@ -139,7 +143,7 @@ def assemble_client_data_for_round_start(
     return client_data
 
 def determine_final_strategies(
-    game_instance, player_role, config,
+    game_state, player_role, config,
     player_submitted_strategy, scherbius_encrypts_from_player,
     current_scherbius_planned_strategy, current_scherbius_planned_encryption,
     turing_ai_logic_fn
@@ -166,7 +170,7 @@ def determine_final_strategies(
         updated_scherbius_planned_strategy = final_scherbius_strategy
         updated_scherbius_planned_encryption = scherbius_encryption_for_step
 
-        turing_ai_hand, _ = game_instance.turing_observation([]) 
+        turing_ai_hand = game_state.turing_hand 
         final_turing_strategy = turing_ai_logic_fn(
             turing_ai_hand, config.n_battles, config.max_cards_per_battle
         )

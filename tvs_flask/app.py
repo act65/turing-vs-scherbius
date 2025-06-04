@@ -4,7 +4,7 @@ import tvs_core as tvs
 from manager import GameManager
 
 # --- Game Configuration ---
-GAME_CONFIG = tvs.PyGameConfig(
+GAME_CONFIG = tvs.GameConfig(
     scherbius_starting=7,
     scherbius_deal=2,
     turing_starting=5,
