@@ -2,13 +2,15 @@ Core
 - add the option to use a reflector?
 - reset the engima steps every round
 - change to be a finite deck of cards
-- change game_state.step to be functional! 
+- change game_state.step to be functional!
+- support alternative card values (not ints - tho the ints will just be categories now). (base on symmetries? with many cycles)
 
 RL
 - mcts. can share value fn between scherbius and turing
 - autoregressive transformer for generating card allocations
     - order of cards in hand doesnt matter.
     - inputs: rewards, scherbius' plays (if Turning policy), allocations so far, current hand.
+- (will need to optimise the core for speed?)
 
 Site
 - display config variables at top
